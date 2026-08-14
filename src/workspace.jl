@@ -88,7 +88,14 @@ function GRFWorkspace(field; reltol=1e-7, maxiter=prod(size(field)))
         volume_reciprocal_operator,
     )
 
-    ws = GRFWorkspace{typeof(field),Any,typeof(grid),T,d}(
+    solver = ConjugateGradientSolver(
+        apply_matern_operator!;
+        template_field=field,
+        reltol,
+        maxiter,
+    )
+
+    return GRFWorkspace{typeof(field),typeof(solver),typeof(grid),T,d}(
         grid,
         Loc,
         d,
@@ -104,13 +111,6 @@ function GRFWorkspace(field; reltol=1e-7, maxiter=prod(size(field)))
         volume_reciprocal_operator,
         directional_operators(SeparableMetrics(), Loc, active),
         directional_operators(NonseparableMetrics(), Loc, active),
-        nothing,
+        solver,
     )
-    ws.solver = ConjugateGradientSolver(
-        (result, u) -> apply_matern_operator!(result, u, ws);
-        template_field=field,
-        reltol,
-        maxiter,
-    )
-    return ws
 end

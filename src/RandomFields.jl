@@ -60,7 +60,7 @@ end
 function apply_repeated_inverse!(ws::GRFWorkspace, k)
     for _ in 1:k
         zero_field!(next_solution(ws))
-        solve!(next_solution(ws), ws.solver, current_solution(ws))
+        solve!(next_solution(ws), ws.solver, current_solution(ws), ws)
         fill_halo_regions!(next_solution(ws))
         mask_immersed_values!(next_solution(ws))
         swap_solution_buffers!(ws)
@@ -76,7 +76,7 @@ function apply_half_order_inverse!(ws::GRFWorkspace, quadrature_points)
         ws.shift_coefficient = 1 + tan(θ)^2
         weight = (2 / π) * (π / 2 / quadrature_points) * sec(θ)^2
         zero_field!(next_solution(ws))
-        solve!(next_solution(ws), ws.solver, current_solution(ws))
+        solve!(next_solution(ws), ws.solver, current_solution(ws), ws)
         fill_halo_regions!(next_solution(ws))
         accumulate_weighted!(ws.accumulator, next_solution(ws), weight)
     end
