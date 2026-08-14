@@ -60,7 +60,7 @@ function apply_half_order_inverse!(field, solution_field, rhs_field, ws::GRFWork
     for m in 1:quadrature_points
         θ = (m - 0.5) * (π / 2) / quadrature_points
         shift_coefficient = 1 + tan(θ)^2
-        weight = (2 / π) * (π / 2 / quadrature_points) * sec(θ)^2
+        weight = (1 / quadrature_points) * sec(θ)^2
         zero_field!(solution_field)
         solve!(solution_field, ws.solver, rhs_field, ws, shift_coefficient)
         fill_halo_regions!(solution_field)
