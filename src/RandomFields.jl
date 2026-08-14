@@ -45,7 +45,7 @@ end
 function apply_repeated_inverse!(ws::GRFWorkspace)
     for _ in 1:ws.k
         zero_field!(next_solution(ws))
-        solve!(next_solution(ws), ws.solver, current_solution(ws), ws)
+        solve!(next_solution(ws), ws.solver, current_solution(ws), ws, 1.)
         fill_halo_regions!(next_solution(ws))
         mask_immersed_values!(next_solution(ws))
         swap_solution_buffers!(ws)
@@ -58,14 +58,13 @@ function apply_half_order_inverse!(ws::GRFWorkspace, quadrature_points)
     zero_field!(ws.accumulator)
     for m in 1:quadrature_points
         θ = (m - 0.5) * (π / 2) / quadrature_points
-        ws.shift_coefficient = 1 + tan(θ)^2
+        shift_coefficient = 1 + tan(θ)^2
         weight = (2 / π) * (π / 2 / quadrature_points) * sec(θ)^2
         zero_field!(next_solution(ws))
-        solve!(next_solution(ws), ws.solver, current_solution(ws), ws)
+        solve!(next_solution(ws), ws.solver, current_solution(ws), ws, shift_coefficient)
         fill_halo_regions!(next_solution(ws))
         accumulate_weighted!(ws.accumulator, next_solution(ws), weight)
     end
-    ws.shift_coefficient = 1
     return ws.accumulator
 end
 
@@ -92,7 +91,6 @@ function generate!(
     location(field) === workspace.location ||
         throw(ArgumentError("workspace was built for a different field location"))
 
-    workspace.shift_coefficient = 1
     workspace.active_is_a = true
     
     discretize_white_noise!(workspace, v)

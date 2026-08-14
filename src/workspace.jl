@@ -14,7 +14,6 @@ mutable struct GRFWorkspace{F,S,G,T,D,P}
     inverse_sqrt_volume::F
     active_is_a::Bool
 
-    shift_coefficient::T
     weights::NTuple{D,T}
     use_fused_isotropic_path::Bool
 
@@ -30,7 +29,7 @@ current_solution(ws::GRFWorkspace) = ws.active_is_a ? ws.buffer_a : ws.buffer_b
 next_solution(ws::GRFWorkspace) = ws.active_is_a ? ws.buffer_b : ws.buffer_a
 swap_solution_buffers!(ws::GRFWorkspace) = (ws.active_is_a=(!ws.active_is_a); ws)
 
-function apply_matern_operator!(result, u, ws::GRFWorkspace)
+function apply_matern_operator!(result, u, ws::GRFWorkspace, shift_coefficient=1.)
     fill_halo_regions!(u)
     if ws.use_fused_isotropic_path
         run_kernel!(
@@ -38,7 +37,7 @@ function apply_matern_operator!(result, u, ws::GRFWorkspace)
             ws.grid,
             result,
             ws.grid,
-            ws.shift_coefficient,
+            shift_coefficient,
             ws.weights[1],
             ws.laplacian_operator,
             u,
@@ -49,7 +48,7 @@ function apply_matern_operator!(result, u, ws::GRFWorkspace)
             ws.grid,
             result,
             ws.grid,
-            ws.shift_coefficient,
+            shift_coefficient,
             ws.weights,
             ws.separable_operators,
             ws.location,
@@ -61,7 +60,7 @@ function apply_matern_operator!(result, u, ws::GRFWorkspace)
             ws.grid,
             result,
             ws.grid,
-            ws.shift_coefficient,
+            shift_coefficient,
             ws.weights,
             ws.nonseparable_operators,
             ws.location,
@@ -127,7 +126,6 @@ function GRFWorkspace(field, parameters::MaternParameters; reltol=1e-7, maxiter=
         accumulator,
         inverse_sqrt_volume,
         true,
-        one(T),
         weights,
         use_fused_isotropic_path,
         lookup_operator(:∇², loc...),
