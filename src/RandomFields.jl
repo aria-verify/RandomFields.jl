@@ -25,12 +25,14 @@ include("directional_operators.jl")
 include("kernels.jl")
 include("workspace.jl")
 
-function matern_spde_two_alpha(parameters, dimension_count)
+function matern_spde_alpha(parameters, dimension)
     two_nu = 2 * parameters.smoothness
     isinteger(two_nu) || throw(ArgumentError("smoothness must be integer or half-integer"))
-    two_alpha = round(Int, two_nu) + dimension_count
+    two_alpha = round(Int, two_nu) + dimension
     two_alpha > 0 || throw(ArgumentError("smoothness + dimension/2 must be positive"))
-    return two_alpha
+    alpha = two_alpha / 2
+    isinteger(alpha) || throw(ArgumentError("smoothness + dimension/2 must be integer"))
+    return round(Int, alpha)
 end
 
 function generate_white_noise!(field, v, scale, inverse_sqrt_volume)

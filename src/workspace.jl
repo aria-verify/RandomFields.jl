@@ -78,9 +78,8 @@ function GRFWorkspace(field, parameters::MaternParameters; reltol=1e-7, maxiter=
 
     check_parameter_dimension(parameters, dimension)
 
-    two_alpha = matern_spde_two_alpha(parameters, dimension)
-    k, half = two_alpha ÷ 2, isodd(two_alpha)
-    alpha = two_alpha / 2
+    alpha = matern_spde_alpha(parameters, dimension)
+    k, half = alpha ÷ 2, isodd(alpha)
 
     scale = variance_matching_constant(parameters, alpha, dimension)
 
