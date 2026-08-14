@@ -44,15 +44,15 @@ end
         rng = Xoshiro(RANDOM_SEED)
         field = CenterField(grid)
         v = randn(rng, size(field))
-        workspace = GRFWorkspace(field)
         dimension = RandomFields.dimension_count(grid)
         parameters = IsotropicMatern(
             length_scale=1.0, output_scale=1.0, smoothness=(dimension / 2) + 1
         )
-        generate!(field, workspace, v, parameters)
+        workspace = GRFWorkspace(field, parameters)
+        generate!(field, workspace, v)
         @test any(field .!= 0)
         field_2 = CenterField(grid)
-        generate!(field_2, workspace, v, parameters)
+        generate!(field_2, workspace, v)
         @test all(field .== field_2)
     end
 end

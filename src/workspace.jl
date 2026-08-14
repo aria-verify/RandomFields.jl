@@ -1,7 +1,12 @@
-mutable struct GRFWorkspace{F,S,G,T,D}
+mutable struct GRFWorkspace{F,S,G,T,D,P}
     grid::G
     location::Tuple{DataType,DataType,DataType}
     dimension_count::Int
+
+    parameters::P
+    scale::T
+    k::Int
+    half::Bool
 
     buffer_a::F
     buffer_b::F
@@ -27,13 +32,12 @@ swap_solution_buffers!(ws::GRFWorkspace) = (ws.active_is_a=(!ws.active_is_a); ws
 
 function apply_matern_operator!(result, u, ws::GRFWorkspace)
     fill_halo_regions!(u)
-    grid = ws.grid
     if ws.use_fused_isotropic_path
         run_kernel!(
             _fused_isotropic_operator_kernel!,
-            grid,
+            ws.grid,
             result,
-            grid,
+            ws.grid,
             ws.shift_coefficient,
             ws.weights[1],
             ws.laplacian_operator,
@@ -42,9 +46,9 @@ function apply_matern_operator!(result, u, ws::GRFWorkspace)
     elseif metric_separability(grid) isa SeparableMetrics
         run_kernel!(
             _separable_operator_kernel!,
-            grid,
+            ws.grid,
             result,
-            grid,
+            ws.grid,
             ws.shift_coefficient,
             ws.weights,
             ws.separable_operators,
@@ -54,9 +58,9 @@ function apply_matern_operator!(result, u, ws::GRFWorkspace)
     else
         run_kernel!(
             _nonseparable_operator_kernel!,
-            grid,
+            ws.grid,
             result,
-            grid,
+            ws.grid,
             ws.shift_coefficient,
             ws.weights,
             ws.nonseparable_operators,
@@ -68,17 +72,32 @@ function apply_matern_operator!(result, u, ws::GRFWorkspace)
     return result
 end
 
-function GRFWorkspace(field; reltol=1e-7, maxiter=prod(size(field)))
+get_weights(p::IsotropicMatern, dimension) = ntuple(_ -> p.length_scale^2, dimension)
+get_weights(p::AnisotropicMatern, dimension) = ntuple(n -> p.length_scale[n]^2, dimension)
+
+function GRFWorkspace(field, parameters::MaternParameters; reltol=1e-7, maxiter=prod(size(field)))
+    
     grid = field.grid
     loc = location(field)
     active = active_dimensions(grid)
     dimension = dimension_count(grid)
     T = eltype(field)
 
+    check_parameter_dimension(parameters, dimension)
+
+    two_alpha = matern_spde_two_alpha(parameters, dimension)
+    k, half = two_alpha ÷ 2, isodd(two_alpha)
+    alpha = two_alpha / 2
+
+    scale = variance_matching_constant(parameters, alpha, dimension)
+
     buffer_a, buffer_b, accumulator = similar(field), similar(field), similar(field)
 
     volume_reciprocal_operator = lookup_operator(:V⁻¹, loc...)
     inverse_sqrt_volume = similar(field)
+
+    weights = get_weights(parameters, dimension)
+    use_fused_isotropic_path = parameters isa IsotropicMatern && !is_immersed_grid(grid)
 
     run_kernel!(
         _inv_sqrt_volume_kernel!,
@@ -95,18 +114,22 @@ function GRFWorkspace(field; reltol=1e-7, maxiter=prod(size(field)))
         maxiter,
     )
 
-    return GRFWorkspace{typeof(field),typeof(solver),typeof(grid),T,dimension}(
+    return GRFWorkspace{typeof(field),typeof(solver),typeof(grid),T,dimension,typeof(parameters)}(
         grid,
         loc,
         dimension,
+        parameters,
+        scale,
+        k,
+        half,
         buffer_a,
         buffer_b,
         accumulator,
         inverse_sqrt_volume,
         true,
         one(T),
-        ntuple(_ -> one(T), dimension),
-        false,
+        weights,
+        use_fused_isotropic_path,
         lookup_operator(:∇², loc...),
         volume_reciprocal_operator,
         directional_operators(SeparableMetrics(), loc, active),
