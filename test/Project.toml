@@ -1,0 +1,16 @@
+[deps]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
+RandomFields = "53c68c22-76a5-4c85-9d7c-68c72d336b8c"
+
+[sources]
+RandomFields = {path = ".."}
+
+[compat]
+Aqua = "0.8.16"
+JET = "0.12.1"
+Test = "1.11.0"
+Random = "1.11.0"
