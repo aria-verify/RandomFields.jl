@@ -1,4 +1,4 @@
-mutable struct GRFWorkspace{F,S,G,T,D,P}
+struct GRFWorkspace{F,S,G,T,D,P}
     grid::G
     location::Tuple{DataType,DataType,DataType}
     dimension_count::Int
@@ -8,11 +8,9 @@ mutable struct GRFWorkspace{F,S,G,T,D,P}
     k::Int
     half::Bool
 
-    buffer_a::F
-    buffer_b::F
-    accumulator::F
+    field_buffer_a::F
+    field_buffer_b::F
     inverse_sqrt_volume::F
-    active_is_a::Bool
 
     weights::NTuple{D,T}
     use_fused_isotropic_path::Bool
@@ -24,10 +22,6 @@ mutable struct GRFWorkspace{F,S,G,T,D,P}
 
     solver::S
 end
-
-current_solution(ws::GRFWorkspace) = ws.active_is_a ? ws.buffer_a : ws.buffer_b
-next_solution(ws::GRFWorkspace) = ws.active_is_a ? ws.buffer_b : ws.buffer_a
-swap_solution_buffers!(ws::GRFWorkspace) = (ws.active_is_a=(!ws.active_is_a); ws)
 
 function apply_matern_operator!(result, u, ws::GRFWorkspace, shift_coefficient=1.)
     fill_halo_regions!(u)
@@ -90,7 +84,7 @@ function GRFWorkspace(field, parameters::MaternParameters; reltol=1e-7, maxiter=
 
     scale = variance_matching_constant(parameters, alpha, dimension)
 
-    buffer_a, buffer_b, accumulator = similar(field), similar(field), similar(field)
+    field_buffer_a, field_buffer_b = similar(field), similar(field)
 
     volume_reciprocal_operator = lookup_operator(:V⁻¹, loc...)
     inverse_sqrt_volume = similar(field)
@@ -121,11 +115,9 @@ function GRFWorkspace(field, parameters::MaternParameters; reltol=1e-7, maxiter=
         scale,
         k,
         half,
-        buffer_a,
-        buffer_b,
-        accumulator,
+        field_buffer_a,
+        field_buffer_b,
         inverse_sqrt_volume,
-        true,
         weights,
         use_fused_isotropic_path,
         lookup_operator(:∇², loc...),

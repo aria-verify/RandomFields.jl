@@ -33,39 +33,40 @@ function matern_spde_two_alpha(parameters, dimension_count)
     return two_alpha
 end
 
-function discretize_white_noise!(ws::GRFWorkspace, v)
-    rhs, grid = current_solution(ws), ws.grid
+function generate_white_noise!(field, v, scale, inverse_sqrt_volume)
+    grid = field.grid
     run_kernel!(
-        _discretize_white_noise_kernel!, grid, rhs, grid, ws.scale, ws.inverse_sqrt_volume, v
+        _discretize_white_noise_kernel!, grid, field, grid, scale, inverse_sqrt_volume, v
     )
-    fill_halo_regions!(rhs)
-    return rhs
+    fill_halo_regions!(field)
+    return field
 end
 
-function apply_repeated_inverse!(ws::GRFWorkspace)
+function apply_repeated_inverse!(solution_field, source_field, ws::GRFWorkspace)
     for _ in 1:ws.k
-        zero_field!(next_solution(ws))
-        solve!(next_solution(ws), ws.solver, current_solution(ws), ws, 1.)
-        fill_halo_regions!(next_solution(ws))
-        mask_immersed_values!(next_solution(ws))
-        swap_solution_buffers!(ws)
+        zero_field!(solution_field)
+        solve!(solution_field, ws.solver, source_field, ws, 1.)
+        fill_halo_regions!(solution_field)
+        mask_immersed_values!(solution_field)
+        source_field, solution_field = solution_field, source_field
     end
-    return ws
+    # Due to name swap in final iteration, source_field corresponds to final solution
+    return source_field, solution_field
 end
 
 # A^(-1/2) via A^(-1/2) = (2/π) ∫₀^{π/2} (A + tan²θ)⁻¹ sec²θ dθ, midpoint quadrature
-function apply_half_order_inverse!(ws::GRFWorkspace, quadrature_points)
-    zero_field!(ws.accumulator)
+function apply_half_order_inverse!(field, solution_field, rhs_field, ws::GRFWorkspace, quadrature_points)
+    zero_field!(field)
     for m in 1:quadrature_points
         θ = (m - 0.5) * (π / 2) / quadrature_points
         shift_coefficient = 1 + tan(θ)^2
         weight = (2 / π) * (π / 2 / quadrature_points) * sec(θ)^2
-        zero_field!(next_solution(ws))
-        solve!(next_solution(ws), ws.solver, current_solution(ws), ws, shift_coefficient)
-        fill_halo_regions!(next_solution(ws))
-        accumulate_weighted!(ws.accumulator, next_solution(ws), weight)
+        zero_field!(solution_field)
+        solve!(solution_field, ws.solver, rhs_field, ws, shift_coefficient)
+        fill_halo_regions!(solution_field)
+        accumulate_weighted!(field, solution_field, weight)
     end
-    return ws.accumulator
+    return field
 end
 
 """
@@ -90,21 +91,20 @@ function generate!(
         throw(ArgumentError("workspace was built for a different grid"))
     location(field) === workspace.location ||
         throw(ArgumentError("workspace was built for a different field location"))
-
-    workspace.active_is_a = true
     
-    discretize_white_noise!(workspace, v)
+    source_field, solution_field = workspace.field_buffer_a, workspace.field_buffer_b
 
-    apply_repeated_inverse!(workspace)
+    generate_white_noise!(source_field, v, workspace.scale, workspace.inverse_sqrt_volume)
 
-    result = if workspace.half
-        apply_half_order_inverse!(workspace, sqrt_quadrature_points)
+    solution_field, source_field = apply_repeated_inverse!(solution_field, source_field, workspace)
+
+    if workspace.half
+        apply_half_order_inverse!(field, source_field, solution_field, workspace, sqrt_quadrature_points)
     else
-        current_solution(workspace)
+        copy_masked_result!(field, solution_field)
     end
-    copy_masked_result!(field, result)
 
-    return field
+    return nothing
 end
 
 end
