@@ -1,7 +1,6 @@
 struct GRFWorkspace{F,S,G,T,D,P}
     grid::G
     location::Tuple{DataType,DataType,DataType}
-    dimension_count::Int
 
     parameters::P
     scale::T
@@ -109,7 +108,6 @@ function GRFWorkspace(field, parameters::MaternParameters; reltol=1e-7, maxiter=
     return GRFWorkspace{typeof(field),typeof(solver),typeof(grid),T,dimension,typeof(parameters)}(
         grid,
         loc,
-        dimension,
         parameters,
         scale,
         k,
