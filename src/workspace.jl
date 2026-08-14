@@ -105,7 +105,7 @@ function GRFWorkspace(field, parameters::MaternParameters; reltol=1e-7, maxiter=
         maxiter,
     )
 
-    return GRFWorkspace{typeof(field),typeof(solver),typeof(grid),T,dimension,typeof(parameters)}(
+    return GRFWorkspace(
         grid,
         loc,
         parameters,
