@@ -70,14 +70,14 @@ end
 
 function GRFWorkspace(field; reltol=1e-7, maxiter=prod(size(field)))
     grid = field.grid
-    Loc = location(field)
+    loc = location(field)
     active = active_dimensions(grid)
-    d = dimension_count(grid)
+    dimension = dimension_count(grid)
     T = eltype(field)
 
     buffer_a, buffer_b, accumulator = similar(field), similar(field), similar(field)
 
-    volume_reciprocal_operator = lookup_operator(:V⁻¹, Loc...)
+    volume_reciprocal_operator = lookup_operator(:V⁻¹, loc...)
     inverse_sqrt_volume = similar(field)
 
     run_kernel!(
@@ -95,22 +95,22 @@ function GRFWorkspace(field; reltol=1e-7, maxiter=prod(size(field)))
         maxiter,
     )
 
-    return GRFWorkspace{typeof(field),typeof(solver),typeof(grid),T,d}(
+    return GRFWorkspace{typeof(field),typeof(solver),typeof(grid),T,dimension}(
         grid,
-        Loc,
-        d,
+        loc,
+        dimension,
         buffer_a,
         buffer_b,
         accumulator,
         inverse_sqrt_volume,
         true,
         one(T),
-        ntuple(_ -> one(T), d),
+        ntuple(_ -> one(T), dimension),
         false,
-        lookup_operator(:∇², Loc...),
+        lookup_operator(:∇², loc...),
         volume_reciprocal_operator,
-        directional_operators(SeparableMetrics(), Loc, active),
-        directional_operators(NonseparableMetrics(), Loc, active),
+        directional_operators(SeparableMetrics(), loc, active),
+        directional_operators(NonseparableMetrics(), loc, active),
         solver,
     )
 end
