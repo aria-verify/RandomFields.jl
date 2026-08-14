@@ -81,17 +81,11 @@ function GRFWorkspace(field; reltol=1e-7, maxiter=prod(size(field)))
     inverse_sqrt_volume = similar(field)
 
     run_kernel!(
-        (
-            let vop = volume_operator
-                @kernel function _inv_sqrt_volume_kernel!(out, grid)
-                    i, j, k = @index(Global, NTuple)
-                    @inbounds out[i, j, k] = 1 / sqrt(vop(i, j, k, grid))
-                end
-            end
-        ),
+        _inv_sqrt_volume_kernel!,
         grid,
         inverse_sqrt_volume,
         grid,
+        volume_operator,
     )
 
     ws = GRFWorkspace{typeof(field),Any,typeof(grid),T,d}(

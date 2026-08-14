@@ -56,6 +56,11 @@ end
         is_immersed_cell(i, j, k, grid) ? zero(eltype(destination)) : source[i, j, k]
 end
 
+@kernel function _inv_sqrt_volume_kernel!(out, grid, volume_operator)
+    i, j, k = @index(Global, NTuple)
+    @inbounds out[i, j, k] = 1 / sqrt(volume_operator(i, j, k, grid))
+end
+
 # thin dispatch wrappers around launch!
 function run_kernel!(kernel, grid, args...)
     (launch!(architecture(grid), grid, :xyz, kernel, args...); nothing)
