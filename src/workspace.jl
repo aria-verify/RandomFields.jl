@@ -14,7 +14,7 @@ mutable struct GRFWorkspace{F,S,G,T,D}
     use_fused_isotropic_path::Bool
 
     laplacian_operator::Any                 # built-in ∇² at field's location (fused isotropic path)
-    volume_operator::Any                    # cell-volume op at field's location
+    volume_reciprocal_operator::Any         # reciprocal cell-volume op at field's location
     separable_operators::Any                # used when metric_separability(grid) === SeparableMetrics()
     nonseparable_operators::Any             # used otherwise
 
@@ -61,7 +61,7 @@ function apply_matern_operator!(result, u, ws::GRFWorkspace)
             ws.weights,
             ws.nonseparable_operators,
             ws.location,
-            ws.volume_operator,
+            ws.volume_reciprocal_operator,
             u,
         )
     end
@@ -77,7 +77,7 @@ function GRFWorkspace(field; reltol=1e-7, maxiter=prod(size(field)))
 
     buffer_a, buffer_b, accumulator = similar(field), similar(field), similar(field)
 
-    volume_operator = lookup_operator(:V, Loc...)
+    volume_reciprocal_operator = lookup_operator(:V⁻¹, Loc...)
     inverse_sqrt_volume = similar(field)
 
     run_kernel!(
@@ -85,7 +85,7 @@ function GRFWorkspace(field; reltol=1e-7, maxiter=prod(size(field)))
         grid,
         inverse_sqrt_volume,
         grid,
-        volume_operator,
+        volume_reciprocal_operator,
     )
 
     ws = GRFWorkspace{typeof(field),Any,typeof(grid),T,d}(
@@ -101,7 +101,7 @@ function GRFWorkspace(field; reltol=1e-7, maxiter=prod(size(field)))
         ntuple(_ -> one(T), d),
         false,
         lookup_operator(:∇², Loc...),
-        volume_operator,
+        volume_reciprocal_operator,
         directional_operators(SeparableMetrics(), Loc, active),
         directional_operators(NonseparableMetrics(), Loc, active),
         nothing,

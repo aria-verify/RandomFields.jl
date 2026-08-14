@@ -17,13 +17,13 @@ end
 end
 
 @kernel function _nonseparable_operator_kernel!(
-    result, grid, shift_coefficient, weights, operators, location, volume, u
+    result, grid, shift_coefficient, weights, operators, location, volume_reciprocal, u
 )
     i, j, k = @index(Global, NTuple)
     @inbounds result[i, j, k] =
         shift_coefficient * u[i, j, k] -
-        nonseparable_weighted_flux_sum(i, j, k, grid, u, weights, operators, location) /
-        volume(i, j, k, grid)
+        nonseparable_weighted_flux_sum(i, j, k, grid, u, weights, operators, location) *
+        volume_reciprocal(i, j, k, grid)
 end
 
 @kernel function _discretize_white_noise_kernel!(rhs, grid, scale, inverse_sqrt_volume, v)
@@ -56,9 +56,9 @@ end
         is_immersed_cell(i, j, k, grid) ? zero(eltype(destination)) : source[i, j, k]
 end
 
-@kernel function _inv_sqrt_volume_kernel!(out, grid, volume_operator)
+@kernel function _inv_sqrt_volume_kernel!(out, grid, volume_reciprocal)
     i, j, k = @index(Global, NTuple)
-    @inbounds out[i, j, k] = 1 / sqrt(volume_operator(i, j, k, grid))
+    @inbounds out[i, j, k] = sqrt(volume_reciprocal(i, j, k, grid))
 end
 
 # thin dispatch wrappers around launch!
