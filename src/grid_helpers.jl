@@ -1,14 +1,7 @@
-# --- metric separability trait ------------------------------------------------
-
-abstract type MetricSeparability end
-
-struct SeparableMetrics <: MetricSeparability end
-struct NonseparableMetrics <: MetricSeparability end
-
-metric_separability(::RectilinearGrid) = SeparableMetrics()
-metric_separability(::LatitudeLongitudeGrid) = NonseparableMetrics()
-metric_separability(grid::ImmersedBoundaryGrid) = metric_separability(grid.underlying_grid)
-metric_separability(::Oceananigans.Grids.AbstractGrid) = NonseparableMetrics()  # safe default for other grids
+separable_metrics(::RectilinearGrid) = true
+separable_metrics(::LatitudeLongitudeGrid) = false
+separable_metrics(grid::ImmersedBoundaryGrid) = metric_separability(grid.underlying_grid)
+separable_metrics(::Oceananigans.Grids.AbstractGrid) = false  # safe default for other grids
 
 is_immersed_grid(::Oceananigans.Grids.AbstractGrid) = false
 is_immersed_grid(::ImmersedBoundaryGrid) = true

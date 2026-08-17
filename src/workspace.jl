@@ -114,16 +114,17 @@ function GRFWorkspace(
     inverse_sqrt_volume = similar(field)
 
     use_isotropic_operator = parameters isa IsotropicMatern && !is_immersed_grid(grid)
+    metrics_are_separable = separable_metrics(grid)
 
     modified_helmholtz_operator = if use_isotropic_operator
         IsotropicModifiedHelmholtzOperator(lookup_operator(:∇², loc...))
-    elseif metric_separability(grid) isa SeparableMetrics
+    elseif metrics_are_separable
         SeparableModifiedHelmholtzOperator(
-            directional_operators(SeparableMetrics(), loc, active)
+            directional_operators(metrics_are_separable, loc, active)
         )
     else
         NonSeparableModifiedHelmholtzOperator(
-            directional_operators(NonseparableMetrics(), loc, active),
+            directional_operators(metrics_are_separable, loc, active),
             volume_reciprocal_operator,
         )
     end

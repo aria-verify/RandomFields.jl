@@ -1,35 +1,32 @@
-struct SeparableDirectionalOperator{M, Inner, Delta}
-    inner::Inner   # derivative op, Loc_m -> flipped(Loc_m)
-    delta::Delta   # grid spacing op at Loc (output location)
-end
-dimension_of(::SeparableDirectionalOperator{M}) where M = M
+abstract type AbstractDirectionalOperator{M, I} end
 
-struct NonseparableDirectionalOperator{M, Inner, Area}
-    inner::Inner   # derivative op, Loc_m -> flipped(Loc_m)
-    area::Area     # face-area op, evaluated at the same flipped location as inner
-end
-dimension_of(::NonseparableDirectionalOperator{M}) where M = M
+dimension_of(::AbstractDirectionalOperator{M}) where M = M
 
-function directional_operators(::SeparableMetrics, Loc, active)
+struct SeparableDirectionalOperator{M, I, D} <: AbstractDirectionalOperator{M, I}
+    inner::I   # derivative op, Loc_m -> flipped(Loc_m)
+    delta::D   # grid spacing op at Loc (output location)
+end
+
+struct NonseparableDirectionalOperator{M, I, A} <: AbstractDirectionalOperator{M, I}
+    inner::I   # derivative op, Loc_m -> flipped(Loc_m)
+    area::A    # face-area op, evaluated at the same flipped location as inner
+end
+
+function directional_operators(metrics_are_separable, loc, active)
     ops = ()
     for m in 1:3
         active[m] || continue
-        flipped = flip_location_in_dimension(Loc, m)
+        flipped = flip_location_in_dimension(loc, m)
         inner = lookup_operator(Symbol(:∂, DIMENSION_SYMBOLS[m]), flipped...)
-        delta = lookup_operator(Symbol(:Δ, DIMENSION_SYMBOLS[m]), Loc...)
-        ops = (ops..., SeparableDirectionalOperator{m, typeof(inner), typeof(delta)}(inner, delta))
-    end
-    return ops
-end
+        new_op = if metrics_are_separable
+            delta = lookup_operator(Symbol(:Δ, DIMENSION_SYMBOLS[m]), loc...)
+            SeparableDirectionalOperator{m, typeof(inner), typeof(delta)}(inner, delta)
+        else
+            area  = lookup_operator(Symbol(:A, DIMENSION_SYMBOLS[m]), flipped...)
+            NonseparableDirectionalOperator{m, typeof(inner), typeof(area)}(inner, area)
+        end
+        ops = (ops..., new_op)
 
-function directional_operators(::NonseparableMetrics, Loc, active)
-    ops = ()
-    for m in 1:3
-        active[m] || continue
-        flipped = flip_location_in_dimension(Loc, m)
-        inner = lookup_operator(Symbol(:∂, DIMENSION_SYMBOLS[m]), flipped...)
-        area  = lookup_operator(Symbol(:A, DIMENSION_SYMBOLS[m]), flipped...)
-        ops = (ops..., NonseparableDirectionalOperator{m, typeof(inner), typeof(area)}(inner, area))
     end
     return ops
 end
