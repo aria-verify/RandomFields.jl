@@ -1,13 +1,13 @@
 @kernel function _fused_isotropic_operator_kernel!(
-    result, grid, shift_coefficient, length_scale_squared, laplacian, u
+    result, u, grid, location, shift_coefficient, weights, laplacian,
 )
     i, j, k = @index(Global, NTuple)
     @inbounds result[i, j, k] =
-        shift_coefficient * u[i, j, k] - length_scale_squared * laplacian(i, j, k, grid, u)
+        shift_coefficient * u[i, j, k] - weights[1] * laplacian(i, j, k, grid, u)
 end
 
 @kernel function _separable_operator_kernel!(
-    result, grid, shift_coefficient, weights, operators, location, u
+    result, u, grid, location, shift_coefficient, weights, operators,
 )
     i, j, k = @index(Global, NTuple)
     @inbounds result[i, j, k] =
@@ -17,7 +17,7 @@ end
 end
 
 @kernel function _nonseparable_operator_kernel!(
-    result, grid, shift_coefficient, weights, operators, location, volume_reciprocal, u
+    result, u, grid, location, shift_coefficient, weights, operators, volume_reciprocal,
 )
     i, j, k = @index(Global, NTuple)
     @inbounds result[i, j, k] =
@@ -26,10 +26,10 @@ end
         volume_reciprocal(i, j, k, grid)
 end
 
-@kernel function _discretize_white_noise_kernel!(rhs, grid, scale, inverse_sqrt_volume, v)
+@kernel function _discretize_white_noise_kernel!(result, grid, scale, inverse_sqrt_volume, v)
     i, j, k = @index(Global, NTuple)
-    @inbounds rhs[i, j, k] = if is_immersed_cell(i, j, k, grid)
-        zero(eltype(rhs))
+    @inbounds result[i, j, k] = if is_immersed_cell(i, j, k, grid)
+        zero(eltype(result))
     else
         scale * v[i, j, k] * inverse_sqrt_volume[i, j, k]
     end

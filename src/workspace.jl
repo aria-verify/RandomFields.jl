@@ -29,23 +29,24 @@ function apply_matern_operator!(result, u, ws::GRFWorkspace, shift_coefficient=1
             _fused_isotropic_operator_kernel!,
             ws.grid,
             result,
-            ws.grid,
-            shift_coefficient,
-            ws.weights[1],
-            ws.laplacian_operator,
             u,
+            ws.grid,
+            ws.location,
+            shift_coefficient,
+            ws.weights,
+            ws.laplacian_operator,
         )
     elseif metric_separability(grid) isa SeparableMetrics
         run_kernel!(
             _separable_operator_kernel!,
             ws.grid,
             result,
+            u,
             ws.grid,
+            ws.location,
             shift_coefficient,
             ws.weights,
             ws.separable_operators,
-            ws.location,
-            u,
         )
     else
         run_kernel!(
@@ -53,12 +54,11 @@ function apply_matern_operator!(result, u, ws::GRFWorkspace, shift_coefficient=1
             ws.grid,
             result,
             ws.grid,
+            ws.location,
             shift_coefficient,
             ws.weights,
             ws.nonseparable_operators,
-            ws.location,
             ws.volume_reciprocal_operator,
-            u,
         )
     end
     return result
