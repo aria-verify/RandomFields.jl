@@ -1,4 +1,4 @@
-struct GRFWorkspace{F,S,G,T,D,P}
+struct GRFWorkspace{F,S,G,T,D,P,H}
     grid::G
     location::Tuple{DataType,DataType,DataType}
 
@@ -12,64 +12,90 @@ struct GRFWorkspace{F,S,G,T,D,P}
     inverse_sqrt_volume::F
 
     weights::NTuple{D,T}
-    use_fused_isotropic_path::Bool
 
-    laplacian_operator::Any                 # built-in ∇² at field's location (fused isotropic path)
-    volume_reciprocal_operator::Any         # reciprocal cell-volume op at field's location
-    separable_operators::Any                # used when metric_separability(grid) === SeparableMetrics()
-    nonseparable_operators::Any             # used otherwise
+    modified_helmholtz_operator::H
 
     solver::S
 end
 
-function apply_modified_helmholtz_operator!(result, operand, ws::GRFWorkspace, shift_coefficient=1.)
+abstract type AbstractModifiedHelmholtzOperator end
+
+struct IsotropicModifiedHelmholtzOperator{L} <: AbstractModifiedHelmholtzOperator
+    laplacian_operator::L
+end
+
+function kernel(::IsotropicModifiedHelmholtzOperator)
+    _isotropic_modified_helmholtz_operator_kernel!
+end
+additional_kernel_args(op::IsotropicModifiedHelmholtzOperator) = (op.laplacian_operator,)
+
+struct SeparableModifiedHelmholtzOperator{D} <: AbstractModifiedHelmholtzOperator
+    differential_operators::D
+end
+
+function kernel(::SeparableModifiedHelmholtzOperator)
+    _separable_modified_helmholtz_operator_kernel!
+end
+function additional_kernel_args(op::SeparableModifiedHelmholtzOperator)
+    (op.differential_operators,)
+end
+
+struct NonSeparableModifiedHelmholtzOperator{D,V} <: AbstractModifiedHelmholtzOperator
+    differential_operators::D
+    volume_reciprocal_operator::V
+end
+
+function kernel(::NonSeparableModifiedHelmholtzOperator)
+    _nonseparable_modified_helmholtz_operator_kernel!
+end
+function additional_kernel_args(op::NonSeparableModifiedHelmholtzOperator)
+    (op.differential_operators, op.volume_reciprocal_operator)
+end
+
+function apply!(
+    result,
+    operand,
+    operator::AbstractModifiedHelmholtzOperator,
+    grid,
+    location,
+    shift_coefficient,
+    weights,
+)
+    run_kernel!(
+        kernel(operator),
+        grid,
+        result,
+        operand,
+        grid,
+        location,
+        shift_coefficient,
+        weights,
+        additional_kernel_args(operator)...,
+    )
+end
+
+function apply_modified_helmholtz_operator!(
+    result, operand, ws::GRFWorkspace, shift_coefficient=1.0
+)
     fill_halo_regions!(operand)
-    if ws.use_fused_isotropic_path
-        run_kernel!(
-            _isotropic_modified_helmholtz_operator_kernel!,
-            ws.grid,
-            result,
-            operand,
-            ws.grid,
-            ws.location,
-            shift_coefficient,
-            ws.weights,
-            ws.laplacian_operator,
-        )
-    elseif metric_separability(grid) isa SeparableMetrics
-        run_kernel!(
-            _separable_modified_helmholtz_operator_kernel!,
-            ws.grid,
-            result,
-            operand,
-            ws.grid,
-            ws.location,
-            shift_coefficient,
-            ws.weights,
-            ws.separable_operators,
-        )
-    else
-        run_kernel!(
-            _nonseparable_modified_helmholtz_operator_kernel!,
-            ws.grid,
-            result,
-            operand,
-            ws.grid,
-            ws.location,
-            shift_coefficient,
-            ws.weights,
-            ws.nonseparable_operators,
-            ws.volume_reciprocal_operator,
-        )
-    end
+    apply!(
+        result,
+        operand,
+        ws.modified_helmholtz_operator,
+        ws.grid,
+        ws.location,
+        shift_coefficient,
+        ws.weights,
+    )
     return result
 end
 
 get_weights(p::IsotropicMatern, dimension) = ntuple(_ -> p.length_scale^2, dimension)
 get_weights(p::AnisotropicMatern, dimension) = ntuple(n -> p.length_scale[n]^2, dimension)
 
-function GRFWorkspace(field, parameters::MaternParameters; reltol=1e-7, maxiter=prod(size(field)))
-    
+function GRFWorkspace(
+    field, parameters::MaternParameters; reltol=1e-7, maxiter=prod(size(field))
+)
     grid = field.grid
     loc = location(field)
     active = active_dimensions(grid)
@@ -89,7 +115,21 @@ function GRFWorkspace(field, parameters::MaternParameters; reltol=1e-7, maxiter=
     inverse_sqrt_volume = similar(field)
 
     weights = get_weights(parameters, dimension)
-    use_fused_isotropic_path = parameters isa IsotropicMatern && !is_immersed_grid(grid)
+
+    use_isotropic_operator = parameters isa IsotropicMatern && !is_immersed_grid(grid)
+
+    modified_helmholtz_operator = if use_isotropic_operator
+        IsotropicModifiedHelmholtzOperator(lookup_operator(:∇², loc...))
+    elseif metric_separability(grid) isa SeparableMetrics
+        SeparableModifiedHelmholtzOperator(
+            directional_operators(SeparableMetrics(), loc, active)
+        )
+    else
+        NonSeparableModifiedHelmholtzOperator(
+            directional_operators(NonseparableMetrics(), loc, active),
+            volume_reciprocal_operator,
+        )
+    end
 
     run_kernel!(
         _inv_sqrt_volume_kernel!,
@@ -100,10 +140,7 @@ function GRFWorkspace(field, parameters::MaternParameters; reltol=1e-7, maxiter=
     )
 
     solver = ConjugateGradientSolver(
-        apply_modified_helmholtz_operator!;
-        template_field=field,
-        reltol,
-        maxiter,
+        apply_modified_helmholtz_operator!; template_field=field, reltol, maxiter
     )
 
     return GRFWorkspace(
@@ -117,11 +154,7 @@ function GRFWorkspace(field, parameters::MaternParameters; reltol=1e-7, maxiter=
         field_buffer_b,
         inverse_sqrt_volume,
         weights,
-        use_fused_isotropic_path,
-        lookup_operator(:∇², loc...),
-        volume_reciprocal_operator,
-        directional_operators(SeparableMetrics(), loc, active),
-        directional_operators(NonseparableMetrics(), loc, active),
+        modified_helmholtz_operator,
         solver,
     )
 end
