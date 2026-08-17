@@ -25,10 +25,8 @@ include("directional_operators.jl")
 include("kernels.jl")
 include("workspace.jl")
 
-function matern_spde_alpha(parameters, dimension)
-    two_nu = 2 * parameters.smoothness
-    isinteger(two_nu) || throw(ArgumentError("smoothness must be integer or half-integer"))
-    two_alpha = round(Int, two_nu) + dimension
+function matern_spde_alpha(smoothness, dimension)
+    two_alpha = round(Int, 2 * smoothness) + dimension
     two_alpha > 0 || throw(ArgumentError("smoothness + dimension/2 must be positive"))
     alpha = two_alpha / 2
     isinteger(alpha) || throw(ArgumentError("smoothness + dimension/2 must be integer"))

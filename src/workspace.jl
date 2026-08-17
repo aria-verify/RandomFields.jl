@@ -101,7 +101,7 @@ function GRFWorkspace(
 
     check_parameter_dimension(parameters, dimension)
 
-    alpha = matern_spde_alpha(parameters, dimension)
+    alpha = matern_spde_alpha(parameters.smoothness, dimension)
     k, half = alpha ÷ 2, isodd(alpha)
 
     scale = variance_matching_constant(parameters, alpha, dimension)

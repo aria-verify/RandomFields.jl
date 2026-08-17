@@ -1,3 +1,12 @@
+function check_matern_parameters_and_get_type(length_scale, output_scale, smoothness)
+    all(>(0), length_scale) || throw(ArgumentError("length_scale (entries) must be positive"))
+    output_scale > 0 || throw(ArgumentError("output_scale must be positive"))
+    smoothness > 0 || throw(ArgumentError("smoothness must be positive"))
+    isinteger(2 * smoothness) || throw(ArgumentError("smoothness must be integer or half-integer"))
+    promote_type(typeof(length_scale), typeof(output_scale), typeof(smoothness))
+end
+
+
 abstract type MaternParameters end
 
 struct IsotropicMatern{T<:Real} <: MaternParameters
@@ -7,10 +16,7 @@ struct IsotropicMatern{T<:Real} <: MaternParameters
 end
 
 function IsotropicMatern(; length_scale, output_scale, smoothness)
-    length_scale > 0 || throw(ArgumentError("length_scale must be positive"))
-    output_scale > 0 || throw(ArgumentError("output_scale must be positive"))
-    smoothness > 0 || throw(ArgumentError("smoothness must be positive"))
-    T = promote_type(typeof(length_scale), typeof(output_scale), typeof(smoothness))
+    T = check_matern_parameters_and_get_type(length_scale, output_scale, smoothness)
     return IsotropicMatern{T}(length_scale, output_scale, smoothness)
 end
 
@@ -21,11 +27,8 @@ struct AnisotropicMatern{T<:Real,N} <: MaternParameters
 end
 
 function AnisotropicMatern(length_scale; output_scale, smoothness)
-    all(>(0), length_scale) || throw(ArgumentError("length_scale entries must be positive"))
-    output_scale > 0 || throw(ArgumentError("output_scale must be positive"))
-    smoothness > 0 || throw(ArgumentError("smoothness must be positive"))
-    T = promote_type(eltype(length_scale), typeof(output_scale), typeof(smoothness))
-    return AnisotropicMatern{T,length(length_scale)}(
+    T = check_matern_parameters_and_get_type(length_scale, output_scale, smoothness)
+    return AnisotropicMatern{T, length(length_scale)}(
         Tuple(T.(length_scale)), T(output_scale), T(smoothness)
     )
 end
