@@ -1,36 +1,44 @@
-function check_matern_parameters_and_get_type(length_scale, output_scale, smoothness)
-    all(>(0), length_scale) || throw(ArgumentError("length_scale (entries) must be positive"))
+function check_matern_parameters(length_scale, output_scale, smoothness)
+    all(>(0), length_scale) ||
+        throw(ArgumentError("length_scale (entries) must be positive"))
     output_scale > 0 || throw(ArgumentError("output_scale must be positive"))
     smoothness > 0 || throw(ArgumentError("smoothness must be positive"))
-    isinteger(2 * smoothness) || throw(ArgumentError("smoothness must be integer or half-integer"))
-    promote_type(typeof(length_scale), typeof(output_scale), typeof(smoothness))
+    isinteger(2 * smoothness) ||
+        throw(ArgumentError("smoothness must be integer or half-integer"))
 end
 
+abstract type AbstractMaternParameters{T} end
 
-abstract type MaternParameters end
-
-struct IsotropicMatern{T<:Real} <: MaternParameters
+struct IsotropicMatern{T} <: AbstractMaternParameters{T}
     length_scale::T
     output_scale::T
     smoothness::T
+    function IsotropicMatern{T}(length_scale::T, output_scale::T, smoothness::T) where {T}
+        check_matern_parameters(length_scale, output_scale, smoothness)
+        return new(length_scale, output_scale, smoothness)
+    end
 end
 
-function IsotropicMatern(; length_scale, output_scale, smoothness)
-    T = check_matern_parameters_and_get_type(length_scale, output_scale, smoothness)
-    return IsotropicMatern{T}(length_scale, output_scale, smoothness)
+function IsotropicMatern(; length_scale::T, output_scale::T, smoothness::T) where {T}
+    IsotropicMatern{T}(length_scale, output_scale, smoothness)
 end
 
-struct AnisotropicMatern{T<:Real,N} <: MaternParameters
+struct AnisotropicMatern{T,N} <: AbstractMaternParameters{T}
     length_scale::NTuple{N,T}
     output_scale::T
     smoothness::T
+    function AnisotropicMatern{T,N}(
+        length_scale::NTuple{N,T}, output_scale::T, smoothness::T
+    ) where {T,N}
+        check_matern_parameters(length_scale, output_scale, smoothness)
+        return new(length_scale, output_scale, smoothness)
+    end
 end
 
-function AnisotropicMatern(length_scale; output_scale, smoothness)
-    T = check_matern_parameters_and_get_type(length_scale, output_scale, smoothness)
-    return AnisotropicMatern{T, length(length_scale)}(
-        Tuple(T.(length_scale)), T(output_scale), T(smoothness)
-    )
+function AnisotropicMatern(;
+    length_scale::NTuple{N,T}, output_scale::T, smoothness::T
+) where {T,N}
+    AnisotropicMatern{T,N}(length_scale, output_scale, smoothness)
 end
 
 length_scale_product(p::IsotropicMatern, dimension) = p.length_scale^dimension
@@ -46,11 +54,15 @@ function check_parameter_dimension(::AnisotropicMatern{T,N}, dimension) where {T
     )
 end
 
-function variance_matching_constant(parameters::MaternParameters, alpha, dimension)
-    return sqrt(
-        parameters.output_scale^2 *
-        length_scale_product(parameters, dimension) *
-        gamma(alpha) *
-        (4π)^(dimension / 2) / gamma(parameters.smoothness),
+function variance_matching_constant(
+    parameters::AbstractMaternParameters{T}, alpha::Int, dimension::Int
+) where {T}
+    return T(
+        sqrt(
+            parameters.output_scale^2 *
+            length_scale_product(parameters, dimension) *
+            gamma(alpha) *
+            (4π)^(dimension / 2) / gamma(parameters.smoothness),
+        ),
     )
 end

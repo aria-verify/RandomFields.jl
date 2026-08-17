@@ -36,18 +36,30 @@ function make_test_grids(
     )
 end
 
+function make_test_parameters(dimension, T)
+    (
+        IsotropicMatern(;
+            length_scale=one(T), output_scale=one(T), smoothness=T((dimension / 2) + 1)
+        ),
+        AnisotropicMatern(;
+            length_scale=ntuple(_ -> one(T), dimension),
+            output_scale=one(T),
+            smoothness=T((dimension / 2) + 1),
+        ),
+    )
+end
+
 @testset "RandomFields.jl" begin
     @testset "Code quality (Aqua.jl)" begin
         Aqua.test_all(RandomFields)
     end
-    @testset "generate! on grid $(summary(grid))" for grid in make_test_grids()
+    @testset "generate! on grid $(summary(grid)) with parameters $(parameters)" for
+            grid in make_test_grids(),
+            parameters in make_test_parameters(RandomFields.dimension_count(grid), eltype(grid))
         rng = Xoshiro(RANDOM_SEED)
         field = CenterField(grid)
         v = randn(rng, size(field))
         dimension = RandomFields.dimension_count(grid)
-        parameters = IsotropicMatern(
-            length_scale=1.0, output_scale=1.0, smoothness=(dimension / 2) + 1
-        )
         workspace = GRFWorkspace(field, parameters)
         generate!(field, workspace, v)
         @test any(field .!= 0)

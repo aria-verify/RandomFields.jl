@@ -92,7 +92,7 @@ get_weights(p::IsotropicMatern, dimension) = ntuple(_ -> p.length_scale^2, dimen
 get_weights(p::AnisotropicMatern, dimension) = ntuple(n -> p.length_scale[n]^2, dimension)
 
 function GRFWorkspace(
-    field, parameters::MaternParameters; reltol=1e-7, maxiter=prod(size(field))
+    field, parameters::AbstractMaternParameters; reltol=1e-7, maxiter=prod(size(field))
 )
     grid = field.grid
     loc = location(field)
