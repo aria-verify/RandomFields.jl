@@ -30,24 +30,24 @@ function AnisotropicMatern(length_scale; output_scale, smoothness)
     )
 end
 
-length_scale_product(p::IsotropicMatern, dimension_count) = p.length_scale^dimension_count
-length_scale_product(p::AnisotropicMatern, dimension_count) = prod(p.length_scale)
+length_scale_product(p::IsotropicMatern, dimension) = p.length_scale^dimension
+length_scale_product(p::AnisotropicMatern, dimension) = prod(p.length_scale)
 
-check_parameter_dimension(::IsotropicMatern, dimension_count) = nothing
-function check_parameter_dimension(p::AnisotropicMatern{T,N}, dimension_count) where {T,N}
-    N == dimension_count || throw(
+check_parameter_dimension(::IsotropicMatern, dimension) = nothing
+
+function check_parameter_dimension(::AnisotropicMatern{T,N}, dimension) where {T,N}
+    N == dimension || throw(
         ArgumentError(
-            "length_scale has $N entries but grid has $dimension_count active dimensions",
+            "length_scale has $N entries but grid has $dimension active dimensions"
         ),
     )
 end
 
-function variance_matching_constant(parameters::MaternParameters, alpha, dimension_count)
-    ν = parameters.smoothness
+function variance_matching_constant(parameters::MaternParameters, alpha, dimension)
     return sqrt(
         parameters.output_scale^2 *
-        length_scale_product(parameters, dimension_count) *
+        length_scale_product(parameters, dimension) *
         gamma(alpha) *
-        (4π)^(dimension_count / 2) / gamma(ν),
+        (4π)^(dimension / 2) / gamma(parameters.smoothness),
     )
 end
