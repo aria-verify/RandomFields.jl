@@ -1,17 +1,15 @@
-struct GRFWorkspace{F,S,G,T,D,P,H}
+struct GRFWorkspace{G,L,T,F,H,S}
     grid::G
-    location::Tuple{DataType,DataType,DataType}
+    location::L
 
-    parameters::P
     scale::T
     k::Int
     half::Bool
+    weights::Tuple{Vararg{T}}
 
     field_buffer_a::F
     field_buffer_b::F
     inverse_sqrt_volume::F
-
-    weights::NTuple{D,T}
 
     modified_helmholtz_operator::H
 
@@ -100,7 +98,6 @@ function GRFWorkspace(
     loc = location(field)
     active = active_dimensions(grid)
     dimension = dimension_count(grid)
-    T = eltype(field)
 
     check_parameter_dimension(parameters, dimension)
 
@@ -109,12 +106,12 @@ function GRFWorkspace(
 
     scale = variance_matching_constant(parameters, alpha, dimension)
 
+    weights = get_weights(parameters, dimension)
+
     field_buffer_a, field_buffer_b = similar(field), similar(field)
 
     volume_reciprocal_operator = lookup_operator(:V⁻¹, loc...)
     inverse_sqrt_volume = similar(field)
-
-    weights = get_weights(parameters, dimension)
 
     use_isotropic_operator = parameters isa IsotropicMatern && !is_immersed_grid(grid)
 
@@ -146,14 +143,13 @@ function GRFWorkspace(
     return GRFWorkspace(
         grid,
         loc,
-        parameters,
         scale,
         k,
         half,
+        weights,
         field_buffer_a,
         field_buffer_b,
         inverse_sqrt_volume,
-        weights,
         modified_helmholtz_operator,
         solver,
     )

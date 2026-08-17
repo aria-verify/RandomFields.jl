@@ -34,7 +34,7 @@ function matern_spde_alpha(parameters, dimension)
     isinteger(alpha) || throw(ArgumentError("smoothness + dimension/2 must be integer"))
     return round(Int, alpha)
 end
-
+ 
 function generate_white_noise!(field, v, scale, inverse_sqrt_volume)
     grid = field.grid
     run_kernel!(
