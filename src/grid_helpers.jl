@@ -3,9 +3,6 @@ separable_metrics(::LatitudeLongitudeGrid) = false
 separable_metrics(grid::ImmersedBoundaryGrid) = metric_separability(grid.underlying_grid)
 separable_metrics(::Oceananigans.Grids.AbstractGrid) = false  # safe default for other grids
 
-is_immersed_grid(::Oceananigans.Grids.AbstractGrid) = false
-is_immersed_grid(::ImmersedBoundaryGrid) = true
-
 is_immersed_cell(i, j, k, grid) = false
 function is_immersed_cell(i, j, k, grid::ImmersedBoundaryGrid)
     Oceananigans.ImmersedBoundaries.immersed_cell(i, j, k, grid)

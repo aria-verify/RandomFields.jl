@@ -113,7 +113,7 @@ function GRFWorkspace(
     volume_reciprocal_operator = lookup_operator(:V⁻¹, loc...)
     inverse_sqrt_volume = similar(field)
 
-    use_isotropic_operator = parameters isa IsotropicMatern && !is_immersed_grid(grid)
+    use_isotropic_operator = parameters isa IsotropicMatern && !(grid isa ImmersedBoundaryGrid)
     metrics_are_separable = separable_metrics(grid)
 
     modified_helmholtz_operator = if use_isotropic_operator
