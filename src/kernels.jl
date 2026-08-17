@@ -1,28 +1,28 @@
-@kernel function _fused_isotropic_operator_kernel!(
-    result, u, grid, location, shift_coefficient, weights, laplacian,
+@kernel function _isotropic_modified_helmholtz_operator_kernel!(
+    result, operand, grid, location, shift_coefficient, weights, laplacian,
 )
     i, j, k = @index(Global, NTuple)
     @inbounds result[i, j, k] =
-        shift_coefficient * u[i, j, k] - weights[1] * laplacian(i, j, k, grid, u)
+        shift_coefficient * operand[i, j, k] - weights[1] * laplacian(i, j, k, grid, operand)
 end
 
-@kernel function _separable_operator_kernel!(
-    result, u, grid, location, shift_coefficient, weights, operators,
+@kernel function _separable_modified_helmholtz_operator_kernel!(
+    result, operand, grid, location, shift_coefficient, weights, operators,
 )
     i, j, k = @index(Global, NTuple)
     @inbounds result[i, j, k] =
-        shift_coefficient * u[i, j, k] - separable_weighted_second_derivative_sum(
-            i, j, k, grid, u, weights, operators, location
+        shift_coefficient * operand[i, j, k] - separable_weighted_second_derivative_sum(
+            i, j, k, grid, operand, weights, operators, location
         )
 end
 
-@kernel function _nonseparable_operator_kernel!(
-    result, u, grid, location, shift_coefficient, weights, operators, volume_reciprocal,
+@kernel function _nonseparable_modified_helmholtz_operator_kernel!(
+    result, operand, grid, location, shift_coefficient, weights, operators, volume_reciprocal,
 )
     i, j, k = @index(Global, NTuple)
     @inbounds result[i, j, k] =
-        shift_coefficient * u[i, j, k] -
-        nonseparable_weighted_flux_sum(i, j, k, grid, u, weights, operators, location) *
+        shift_coefficient * operand[i, j, k] -
+        nonseparable_weighted_flux_sum(i, j, k, grid, operand, weights, operators, location) *
         volume_reciprocal(i, j, k, grid)
 end
 

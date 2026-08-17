@@ -22,14 +22,14 @@ struct GRFWorkspace{F,S,G,T,D,P}
     solver::S
 end
 
-function apply_matern_operator!(result, u, ws::GRFWorkspace, shift_coefficient=1.)
-    fill_halo_regions!(u)
+function apply_modified_helmholtz_operator!(result, operand, ws::GRFWorkspace, shift_coefficient=1.)
+    fill_halo_regions!(operand)
     if ws.use_fused_isotropic_path
         run_kernel!(
-            _fused_isotropic_operator_kernel!,
+            _isotropic_modified_helmholtz_operator_kernel!,
             ws.grid,
             result,
-            u,
+            operand,
             ws.grid,
             ws.location,
             shift_coefficient,
@@ -38,10 +38,10 @@ function apply_matern_operator!(result, u, ws::GRFWorkspace, shift_coefficient=1
         )
     elseif metric_separability(grid) isa SeparableMetrics
         run_kernel!(
-            _separable_operator_kernel!,
+            _separable_modified_helmholtz_operator_kernel!,
             ws.grid,
             result,
-            u,
+            operand,
             ws.grid,
             ws.location,
             shift_coefficient,
@@ -50,9 +50,10 @@ function apply_matern_operator!(result, u, ws::GRFWorkspace, shift_coefficient=1
         )
     else
         run_kernel!(
-            _nonseparable_operator_kernel!,
+            _nonseparable_modified_helmholtz_operator_kernel!,
             ws.grid,
             result,
+            operand,
             ws.grid,
             ws.location,
             shift_coefficient,
@@ -99,7 +100,7 @@ function GRFWorkspace(field, parameters::MaternParameters; reltol=1e-7, maxiter=
     )
 
     solver = ConjugateGradientSolver(
-        apply_matern_operator!;
+        apply_modified_helmholtz_operator!;
         template_field=field,
         reltol,
         maxiter,
