@@ -34,7 +34,7 @@ function lookup_operator(prefix::Symbol, L1, L2, L3)
     )
 end
 
-flip_location_in_dimension(Loc, m) = ntuple(n -> n == m ? flip_location(Loc[n]) : Loc[n], 3)
+flip_location_in_dimension(loc, m) = ntuple(n -> n == m ? flip_location(loc[n]) : loc[n], 3)
 
 # index shift by `offset` cells along dimension `m`
 @inline shift_index(m, i, j, k, offset) =
@@ -47,10 +47,10 @@ flip_location_in_dimension(Loc, m) = ntuple(n -> n == m ? flip_location(Loc[n]) 
     end
 
 # the two indices, in (near, far) order, of the flipped-location evaluation points
-# that bound `field`'s own location at index i in dimension m. Assumes `Loc_m` is
+# that bound `field`'s own location at index i in dimension m. Assumes `loc` is
 # the *output* (field's own) location in dimension m.
-@inline function bounding_pair(m, Loc_m, i, j, k)
-    if Loc_m == Center
+@inline function bounding_pair(m, loc, i, j, k)
+    if loc == Center
         (shift_index(m, i, j, k, 0), shift_index(m, i, j, k, 1))
     else
         (shift_index(m, i, j, k, -1), shift_index(m, i, j, k, 0))
