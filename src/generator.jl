@@ -1,18 +1,15 @@
 struct RandomFieldGenerator{G,L,T,F,H,S}
     grid::G
     location::L
-
     k::Int
     half::Bool
     weights::Tuple{Vararg{T}}
-
     field_buffer_a::F
     field_buffer_b::F
     white_noise_scale::F
-
     modified_helmholtz_operator::H
-
     solver::S
+    n_sqrt_quadrature_points::Int
 end
 
 function apply_modified_helmholtz_operator!(
@@ -34,7 +31,11 @@ get_weights(p::IsotropicMatern, dimension) = ntuple(_ -> p.length_scale^2, dimen
 get_weights(p::AnisotropicMatern, dimension) = ntuple(n -> p.length_scale[n]^2, dimension)
 
 function RandomFieldGenerator(
-    field, parameters::AbstractMaternParameters; reltol=1e-7, maxiter=prod(size(field))
+    field,
+    parameters::AbstractMaternParameters;
+    reltol=1e-7,
+    maxiter=prod(size(field)),
+    n_sqrt_quadrature_points=32,
 )
     grid = field.grid
     loc = location(field)
@@ -86,5 +87,6 @@ function RandomFieldGenerator(
         white_noise_scale,
         modified_helmholtz_operator,
         solver,
+        n_sqrt_quadrature_points,
     )
 end
