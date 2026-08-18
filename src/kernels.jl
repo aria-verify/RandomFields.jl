@@ -53,7 +53,6 @@ end
     @inbounds out[i, j, k] = scale * sqrt(volume_reciprocal(i, j, k, grid))
 end
 
-# thin dispatch wrappers around launch!
 function run_kernel!(kernel, grid, args...)
     (launch!(architecture(grid), grid, :xyz, kernel, args...); nothing)
 end

@@ -1,21 +1,17 @@
 separable_metrics(::RectilinearGrid) = true
 separable_metrics(::LatitudeLongitudeGrid) = false
 separable_metrics(grid::ImmersedBoundaryGrid) = metric_separability(grid.underlying_grid)
-separable_metrics(::Oceananigans.Grids.AbstractGrid) = false  # safe default for other grids
+separable_metrics(::Oceananigans.Grids.AbstractGrid) = false
 
 is_immersed_cell(i, j, k, grid) = false
 function is_immersed_cell(i, j, k, grid::ImmersedBoundaryGrid)
     Oceananigans.ImmersedBoundaries.immersed_cell(i, j, k, grid)
 end
 
-# --- active dimensions ----------------------------------------------------------
-
 active_dimensions(grid) = ntuple(m -> topology(grid)[m] !== Flat, Val(3))
 dimension_count(grid) = count(active_dimensions(grid))
 
 const DIMENSION_SYMBOLS = (:x, :y, :z)
-
-# --- location <-> built-in operator name plumbing --------------------------------
 
 location_character(::Type{Center}) = 'ᶜ'
 location_character(::Type{Face}) = 'ᶠ'

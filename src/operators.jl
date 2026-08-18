@@ -3,14 +3,19 @@ abstract type AbstractDirectionalOperator{M,I} end
 dimension_of(::AbstractDirectionalOperator{M}) where {M} = M
 
 struct SeparableDirectionalOperator{M,I,D} <: AbstractDirectionalOperator{M,I}
-    inner::I   # derivative op, Loc_m -> flipped(Loc_m)
-    delta::D   # grid spacing op at Loc (output location)
+    "Derivative operation at dimension M flipped operand location"
+    inner::I
+    "Grid spacing operation at operand location"
+    delta::D 
 end
 
 struct NonSeparableDirectionalOperator{M,I,A,V} <: AbstractDirectionalOperator{M,I}
-    inner::I   # derivative op, Loc_m -> flipped(Loc_m)
-    area::A    # face-area op, evaluated at the same flipped location as inner
-    volume::V  # cell volume op at output location
+    "Derivative operation at dimension M flipped operand location"
+    inner::I
+    "Face area operation at dimension M flipped operand location"
+    area::A
+    "Cell volume operation at operand location"
+    volume::V
 end
 
 function directional_operators(grid, loc)
@@ -35,10 +40,13 @@ function directional_operators(grid, loc)
     return ops
 end
 
-# Zero out a directional derivative evaluated at (i,j,k) if either of the two
-# Center cells bounding that point (one step back along dimension m) is solid.
-# Correct for a field that is Center-located in dimension m; see note in prose
-# above for the Face-located + immersed generalization.
+
+"""
+    masked_evaluate(op, m, i, j, k, grid, operand)
+
+Zero out a directional derivative  `op` evaluated at `(i,j,k)` on `grid` with `operand`
+if either of the two cells bounding that point (along dimension `m`) is solid.
+"""
 @inline function masked_evaluate(op, m, i, j, k, grid, operand)
     near = shift_index(m, i, j, k, -1)
     blocked = is_immersed_cell(near..., grid) | is_immersed_cell(i, j, k, grid)

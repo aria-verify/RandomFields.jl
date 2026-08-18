@@ -53,11 +53,11 @@ function apply_repeated_inverse!(solution_field, source_field, generator::Random
     return source_field, solution_field
 end
 
-# A^(-1/2) via A^(-1/2) = (2/π) ∫₀^{π/2} (A + tan²θ)⁻¹ sec²θ dθ, midpoint quadrature
 function apply_half_order_inverse!(
     field, solution_field, rhs_field, generator::RandomFieldGenerator, quadrature_points
 )
     zero_field!(field)
+    # Approximate A^(-1/2) = (2/π) ∫₀^{π/2} (A + tan²θ)⁻¹ sec²θ dθ via midpoint quadrature
     for m in 1:quadrature_points
         θ = (m - 0.5) * (π / 2) / quadrature_points
         shift_coefficient = 1 + tan(θ)^2
