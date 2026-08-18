@@ -87,3 +87,45 @@ end
     end
     return second_derivative_sum
 end
+
+abstract type AbstractModifiedHelmholtzOperator end
+
+struct IsotropicModifiedHelmholtzOperator{L} <: AbstractModifiedHelmholtzOperator
+    laplacian_operator::L
+end
+
+function kernel(::IsotropicModifiedHelmholtzOperator)
+    _isotropic_modified_helmholtz_operator_kernel!
+end
+differential_operators(op::IsotropicModifiedHelmholtzOperator) = op.laplacian_operator
+
+struct AnisotropicModifiedHelmholtzOperator{D} <: AbstractModifiedHelmholtzOperator
+    differential_operators::D
+end
+
+function kernel(::AnisotropicModifiedHelmholtzOperator)
+    _anisotropic_modified_helmholtz_operator_kernel!
+end
+function differential_operators(op::AnisotropicModifiedHelmholtzOperator)
+    op.differential_operators
+end
+
+function apply!(
+    result,
+    operand,
+    operator::AbstractModifiedHelmholtzOperator,
+    grid,
+    shift_coefficient,
+    weights,
+)
+    run_kernel!(
+        kernel(operator),
+        grid,
+        result,
+        operand,
+        grid,
+        shift_coefficient,
+        weights,
+        differential_operators(operator),
+    )
+end
