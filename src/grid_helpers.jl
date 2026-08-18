@@ -10,7 +10,7 @@ end
 
 # --- active dimensions ----------------------------------------------------------
 
-active_dimensions(grid) = ntuple(m -> topology(grid)[m] !== Flat, 3)
+active_dimensions(grid) = ntuple(m -> topology(grid)[m] !== Flat, Val(3))
 dimension_count(grid) = count(active_dimensions(grid))
 
 const DIMENSION_SYMBOLS = (:x, :y, :z)
@@ -31,17 +31,18 @@ function lookup_operator(prefix::Symbol, L1, L2, L3)
     )
 end
 
-flip_location_in_dimension(loc, m) = ntuple(n -> n == m ? flip_location(loc[n]) : loc[n], 3)
+flip_location_in_dimension(loc, m) = ntuple(n -> n == m ? flip_location(loc[n]) : loc[n], Val(3))
 
-# index shift by `offset` cells along dimension `m`
-@inline shift_index(m, i, j, k, offset) =
-    if m == 1
-        (i + offset, j, k)
-    elseif m == 2
-        (i, j + offset, k)
-    else
-        (i, j, k + offset)
-    end
+"""
+    shift_index(m, i, j, k, offset)
+
+Shift indices `(i, j, k)` by `offset` cells along dimension `m`.
+"""
+function shift_index end
+
+@inline shift_index(::Val{1}, i, j, k, offset) = (i + offset, j, k)
+@inline shift_index(::Val{2}, i, j, k, offset) = (i, j + offset, k)
+@inline shift_index(::Val{3}, i, j, k, offset) = (i, j, k + offset)
 
 """
     bounding_pair(m, loc, i, j, k)

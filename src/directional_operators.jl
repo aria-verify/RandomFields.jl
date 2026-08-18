@@ -40,35 +40,42 @@ end
     return blocked ? zero(eltype(u)) : op(i, j, k, grid, u)
 end
 
-@inline separable_weighted_second_derivative_sum(i, j, k, grid, u, ::Tuple{}, ::Tuple{}, loc) = zero(
-    eltype(u)
-)
-
 @inline function separable_weighted_second_derivative_sum(
-    i, j, k, grid, u, weights, operators, loc
-)
-    w, rest_w = first(weights), Base.tail(weights)
-    op, rest_op = first(operators), Base.tail(operators)
-    m = dimension_of(op)
-    near, far = bounding_pair(m, loc[m], i, j, k)
-    flux_near = masked_evaluate(op.inner, m, near..., grid, u)
-    flux_far = masked_evaluate(op.inner, m, far..., grid, u)
-    term = w * (flux_far - flux_near) / op.delta(i, j, k, grid)
-    return term +
-           separable_weighted_second_derivative_sum(i, j, k, grid, u, rest_w, rest_op, loc)
+    i, j, k, grid, u, ::Tuple{}, ::Tuple{}, ::Type{L1}, ::Type{L2}, ::Type{L3}
+) where {L1,L2,L3}
+    zero(eltype(u))
 end
 
-@inline nonseparable_weighted_flux_sum(i, j, k, grid, u, ::Tuple{}, ::Tuple{}, loc) = zero(
-    eltype(u)
-)
-
-@inline function nonseparable_weighted_flux_sum(i, j, k, grid, u, weights, operators, loc)
+@inline function separable_weighted_second_derivative_sum(
+    i, j, k, grid, u, weights, operators, l1::Type{L1}, l2::Type{L2}, l3::Type{L3}
+) where {L1,L2,L3}
     w, rest_w = first(weights), Base.tail(weights)
     op, rest_op = first(operators), Base.tail(operators)
     m = dimension_of(op)
-    near, far = bounding_pair(m, loc[m], i, j, k)
-    flux_near = op.area(near..., grid) * masked_evaluate(op.inner, m, near..., grid, u)
-    flux_far = op.area(far..., grid) * masked_evaluate(op.inner, m, far..., grid, u)
+    near, far = bounding_pair(Val(m), (L1, L2, L3)[m], i, j, k)
+    flux_near = masked_evaluate(op.inner, Val(m), near..., grid, u)
+    flux_far = masked_evaluate(op.inner, Val(m), far..., grid, u)
+    term = w * (flux_far - flux_near) / op.delta(i, j, k, grid)
+    return term +
+           separable_weighted_second_derivative_sum(i, j, k, grid, u, rest_w, rest_op, l1, l2, l3)
+end
+
+@inline function nonseparable_weighted_flux_sum(
+    i, j, k, grid, u, ::Tuple{}, ::Tuple{}, ::Type{L1}, ::Type{L2}, ::Type{L3}
+) where {L1,L2,L3}
+    zero(eltype(u))
+end
+
+@inline function nonseparable_weighted_flux_sum(
+    i, j, k, grid, u, weights, operators, l1::Type{L1}, l2::Type{L2}, l3::Type{L3}
+) where {L1,L2,L3}
+    w, rest_w = first(weights), Base.tail(weights)
+    op, rest_op = first(operators), Base.tail(operators)
+    m = dimension_of(op)
+    near, far = bounding_pair(Val(m), (L1, L2, L3)[m], i, j, k)
+    flux_near = op.area(near..., grid) * masked_evaluate(op.inner, Val(m), near..., grid, u)
+    flux_far = op.area(far..., grid) * masked_evaluate(op.inner, Val(m), far..., grid, u)
     term = w * (flux_far - flux_near)
-    return term + nonseparable_weighted_flux_sum(i, j, k, grid, u, rest_w, rest_op, loc)
+    return term +
+           nonseparable_weighted_flux_sum(i, j, k, grid, u, rest_w, rest_op, l1, l2, l3)
 end

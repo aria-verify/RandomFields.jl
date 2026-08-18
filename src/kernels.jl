@@ -12,7 +12,7 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds result[i, j, k] =
         shift_coefficient * operand[i, j, k] - separable_weighted_second_derivative_sum(
-            i, j, k, grid, operand, weights, operators, location
+            i, j, k, grid, operand, weights, operators, location...
         )
 end
 
@@ -22,7 +22,7 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds result[i, j, k] =
         shift_coefficient * operand[i, j, k] -
-        nonseparable_weighted_flux_sum(i, j, k, grid, operand, weights, operators, location) *
+        nonseparable_weighted_flux_sum(i, j, k, grid, operand, weights, operators, location...) *
         volume_reciprocal(i, j, k, grid)
 end
 
