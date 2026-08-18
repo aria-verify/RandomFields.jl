@@ -1,32 +1,24 @@
 @kernel function _isotropic_modified_helmholtz_operator_kernel!(
-    result, operand, grid, shift_coefficient, weights, laplacian,
-)
-    i, j, k = @index(Global, NTuple)
-    @inbounds result[i, j, k] =
-        shift_coefficient * operand[i, j, k] - weights[1] * laplacian(i, j, k, grid, operand)
-end
-
-@kernel function _separable_modified_helmholtz_operator_kernel!(
-    result, operand, grid, shift_coefficient, weights, operators,
-)
-    i, j, k = @index(Global, NTuple)
-    @inbounds result[i, j, k] =
-        shift_coefficient * operand[i, j, k] - separable_weighted_second_derivative_sum(
-            i, j, k, grid, operand, weights, operators
-        )
-end
-
-@kernel function _nonseparable_modified_helmholtz_operator_kernel!(
-    result, operand, grid, shift_coefficient, weights, operators, volume_reciprocal,
+    result, operand, grid, shift_coefficient, weights, laplacian
 )
     i, j, k = @index(Global, NTuple)
     @inbounds result[i, j, k] =
         shift_coefficient * operand[i, j, k] -
-        nonseparable_weighted_flux_sum(i, j, k, grid, operand, weights, operators) *
-        volume_reciprocal(i, j, k, grid)
+        weights[1] * laplacian(i, j, k, grid, operand)
 end
 
-@kernel function _discretize_white_noise_kernel!(result, grid, scale, inverse_sqrt_volume, v)
+@kernel function _anisotropic_modified_helmholtz_operator_kernel!(
+    result, operand, grid, shift_coefficient, weights, operators
+)
+    i, j, k = @index(Global, NTuple)
+    @inbounds result[i, j, k] =
+        shift_coefficient * operand[i, j, k] -
+        weighted_second_derivative_sum(i, j, k, grid, operand, weights, operators)
+end
+
+@kernel function _discretize_white_noise_kernel!(
+    result, grid, scale, inverse_sqrt_volume, v
+)
     i, j, k = @index(Global, NTuple)
     @inbounds result[i, j, k] = if is_immersed_cell(i, j, k, grid)
         zero(eltype(result))
@@ -67,12 +59,15 @@ function run_kernel!(kernel, grid, args...)
 end
 
 zero_field!(field) = (run_kernel!(_zero_kernel!, field.grid, field); field)
+
 function mask_immersed_values!(field)
     (run_kernel!(_mask_immersed_kernel!, field.grid, field, field.grid); field)
 end
+
 function accumulate_weighted!(acc, addend, w)
     (run_kernel!(_accumulate_weighted_kernel!, acc.grid, acc, addend, w); acc)
 end
+
 function copy_masked_result!(destination, source)
     run_kernel!(
         _copy_masked_kernel!, destination.grid, destination, destination.grid, source
