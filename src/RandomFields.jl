@@ -33,12 +33,10 @@ function matern_spde_alpha(smoothness, dimension)
     isinteger(alpha) || throw(ArgumentError("smoothness + dimension/2 must be integer"))
     return round(Int, alpha)
 end
- 
-function generate_white_noise!(field, v, scale, inverse_sqrt_volume)
+
+function generate_white_noise!(field, v, white_noise_scale)
     grid = field.grid
-    run_kernel!(
-        _discretize_white_noise_kernel!, grid, field, grid, scale, inverse_sqrt_volume, v
-    )
+    run_kernel!(_discretize_white_noise_kernel!, grid, field, grid, white_noise_scale, v)
     fill_halo_regions!(field)
     return field
 end
@@ -46,7 +44,7 @@ end
 function apply_repeated_inverse!(solution_field, source_field, ws::GRFWorkspace)
     for _ in 1:ws.k
         zero_field!(solution_field)
-        solve!(solution_field, ws.solver, source_field, ws, 1.)
+        solve!(solution_field, ws.solver, source_field, ws, 1.0)
         fill_halo_regions!(solution_field)
         mask_immersed_values!(solution_field)
         source_field, solution_field = solution_field, source_field
@@ -56,7 +54,9 @@ function apply_repeated_inverse!(solution_field, source_field, ws::GRFWorkspace)
 end
 
 # A^(-1/2) via A^(-1/2) = (2/π) ∫₀^{π/2} (A + tan²θ)⁻¹ sec²θ dθ, midpoint quadrature
-function apply_half_order_inverse!(field, solution_field, rhs_field, ws::GRFWorkspace, quadrature_points)
+function apply_half_order_inverse!(
+    field, solution_field, rhs_field, ws::GRFWorkspace, quadrature_points
+)
     zero_field!(field)
     for m in 1:quadrature_points
         θ = (m - 0.5) * (π / 2) / quadrature_points
@@ -82,25 +82,24 @@ Matérn covariance, via the SPDE representation `(1 - Σᵢλᵢ²∂ᵢ²)^(ν+
 - `sqrt_quadrature_points`: quadrature points for the half-order factor, used only when
   `smoothness + dimension/2` is not an integer.
 """
-function generate!(
-    field,
-    workspace::GRFWorkspace,
-    v;
-    sqrt_quadrature_points=32,
-)
+function generate!(field, workspace::GRFWorkspace, v; sqrt_quadrature_points=32)
     field.grid === workspace.grid ||
         throw(ArgumentError("workspace was built for a different grid"))
     location(field) === workspace.location ||
         throw(ArgumentError("workspace was built for a different field location"))
-    
+
     source_field, solution_field = workspace.field_buffer_a, workspace.field_buffer_b
 
-    generate_white_noise!(source_field, v, workspace.scale, workspace.inverse_sqrt_volume)
+    generate_white_noise!(source_field, v, workspace.white_noise_scale)
 
-    solution_field, source_field = apply_repeated_inverse!(solution_field, source_field, workspace)
+    solution_field, source_field = apply_repeated_inverse!(
+        solution_field, source_field, workspace
+    )
 
     if workspace.half
-        apply_half_order_inverse!(field, source_field, solution_field, workspace, sqrt_quadrature_points)
+        apply_half_order_inverse!(
+            field, source_field, solution_field, workspace, sqrt_quadrature_points
+        )
     else
         copy_masked_result!(field, solution_field)
     end

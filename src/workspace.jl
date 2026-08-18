@@ -2,14 +2,13 @@ struct GRFWorkspace{G,L,T,F,H,S}
     grid::G
     location::L
 
-    scale::T
     k::Int
     half::Bool
     weights::Tuple{Vararg{T}}
 
     field_buffer_a::F
     field_buffer_b::F
-    inverse_sqrt_volume::F
+    white_noise_scale::F
 
     modified_helmholtz_operator::H
 
@@ -94,7 +93,7 @@ function GRFWorkspace(
 
     field_buffer_a, field_buffer_b = similar(field), similar(field)
 
-    inverse_sqrt_volume = similar(field)
+    white_noise_scale = similar(field)
 
     use_isotropic_operator =
         parameters isa IsotropicMatern && !(grid isa ImmersedBoundaryGrid)
@@ -106,10 +105,11 @@ function GRFWorkspace(
     end
 
     run_kernel!(
-        _inv_sqrt_volume_kernel!,
+        _white_noise_scale_kernel!,
         grid,
-        inverse_sqrt_volume,
+        white_noise_scale,
         grid,
+        scale,
         lookup_operator(:V⁻¹, loc...),
     )
 
@@ -120,13 +120,12 @@ function GRFWorkspace(
     return GRFWorkspace(
         grid,
         loc,
-        scale,
         k,
         half,
         weights,
         field_buffer_a,
         field_buffer_b,
-        inverse_sqrt_volume,
+        white_noise_scale,
         modified_helmholtz_operator,
         solver,
     )

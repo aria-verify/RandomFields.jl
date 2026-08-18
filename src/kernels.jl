@@ -17,13 +17,13 @@ end
 end
 
 @kernel function _discretize_white_noise_kernel!(
-    result, grid, scale, inverse_sqrt_volume, v
+    result, grid, white_noise_scale, standard_normal_noise
 )
     i, j, k = @index(Global, NTuple)
     @inbounds result[i, j, k] = if is_immersed_cell(i, j, k, grid)
         zero(eltype(result))
     else
-        scale * v[i, j, k] * inverse_sqrt_volume[i, j, k]
+        standard_normal_noise[i, j, k] * white_noise_scale[i, j, k]
     end
 end
 
@@ -48,9 +48,9 @@ end
         is_immersed_cell(i, j, k, grid) ? zero(eltype(destination)) : source[i, j, k]
 end
 
-@kernel function _inv_sqrt_volume_kernel!(out, grid, volume_reciprocal)
+@kernel function _white_noise_scale_kernel!(out, grid, scale, volume_reciprocal)
     i, j, k = @index(Global, NTuple)
-    @inbounds out[i, j, k] = sqrt(volume_reciprocal(i, j, k, grid))
+    @inbounds out[i, j, k] = scale * sqrt(volume_reciprocal(i, j, k, grid))
 end
 
 # thin dispatch wrappers around launch!
