@@ -55,7 +55,6 @@ function apply!(
     operand,
     operator::AbstractModifiedHelmholtzOperator,
     grid,
-    location,
     shift_coefficient,
     weights,
 )
@@ -65,7 +64,6 @@ function apply!(
         result,
         operand,
         grid,
-        location,
         shift_coefficient,
         weights,
         additional_kernel_args(operator)...,
@@ -81,7 +79,6 @@ function apply_modified_helmholtz_operator!(
         operand,
         ws.modified_helmholtz_operator,
         ws.grid,
-        ws.location,
         shift_coefficient,
         ws.weights,
     )

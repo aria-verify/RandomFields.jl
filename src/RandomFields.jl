@@ -15,6 +15,7 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Solvers: ConjugateGradientSolver, solve!
 using Oceananigans.Utils: launch!
 using KernelAbstractions: @kernel, @index
+using KernelAbstractions.Extras.LoopInfo: @unroll
 using SpecialFunctions: gamma
 
 export generate!, IsotropicMatern, AnisotropicMatern, GRFWorkspace

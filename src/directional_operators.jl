@@ -34,48 +34,40 @@ end
 # Center cells bounding that point (one step back along dimension m) is solid.
 # Correct for a field that is Center-located in dimension m; see note in prose
 # above for the Face-located + immersed generalization.
-@inline function masked_evaluate(op, m, i, j, k, grid, u)
+@inline function masked_evaluate(op, m, i, j, k, grid, operand)
     near = shift_index(m, i, j, k, -1)
     blocked = is_immersed_cell(near..., grid) | is_immersed_cell(i, j, k, grid)
-    return blocked ? zero(eltype(u)) : op(i, j, k, grid, u)
+    return blocked ? zero(eltype(operand)) : op(i, j, k, grid, operand)
 end
 
 @inline function separable_weighted_second_derivative_sum(
-    i, j, k, grid, u, ::Tuple{}, ::Tuple{}, ::Type{L1}, ::Type{L2}, ::Type{L3}
-) where {L1,L2,L3}
-    zero(eltype(u))
-end
-
-@inline function separable_weighted_second_derivative_sum(
-    i, j, k, grid, u, weights, operators, l1::Type{L1}, l2::Type{L2}, l3::Type{L3}
-) where {L1,L2,L3}
-    w, rest_w = first(weights), Base.tail(weights)
-    op, rest_op = first(operators), Base.tail(operators)
-    m = dimension_of(op)
-    near, far = bounding_pair(Val(m), (L1, L2, L3)[m], i, j, k)
-    flux_near = masked_evaluate(op.inner, Val(m), near..., grid, u)
-    flux_far = masked_evaluate(op.inner, Val(m), far..., grid, u)
-    term = w * (flux_far - flux_near) / op.delta(i, j, k, grid)
-    return term +
-           separable_weighted_second_derivative_sum(i, j, k, grid, u, rest_w, rest_op, l1, l2, l3)
+    i, j, k, grid::G, operand::Field{L1,L2,L3}, weights::NTuple{D}, operators::NTuple{D, SeparableDirectionalOperator}
+) where {G,L1,L2,L3,D}
+    second_derivative_sum = zero(eltype(operand))
+    @unroll for d in 1:D
+        w, op = weights[d], operators[d]
+        m = dimension_of(op)
+        near, far = bounding_pair(Val(m), (L1, L2, L3)[m], i, j, k)
+        flux_near = masked_evaluate(op.inner, Val(m), near..., grid, operand)
+        flux_far = masked_evaluate(op.inner, Val(m), far..., grid, operand)
+        second_derivative_sum += w * (flux_far - flux_near) / op.delta(i, j, k, grid)
+    end
+    return second_derivative_sum
 end
 
 @inline function nonseparable_weighted_flux_sum(
-    i, j, k, grid, u, ::Tuple{}, ::Tuple{}, ::Type{L1}, ::Type{L2}, ::Type{L3}
-) where {L1,L2,L3}
-    zero(eltype(u))
-end
-
-@inline function nonseparable_weighted_flux_sum(
-    i, j, k, grid, u, weights, operators, l1::Type{L1}, l2::Type{L2}, l3::Type{L3}
-) where {L1,L2,L3}
-    w, rest_w = first(weights), Base.tail(weights)
-    op, rest_op = first(operators), Base.tail(operators)
-    m = dimension_of(op)
-    near, far = bounding_pair(Val(m), (L1, L2, L3)[m], i, j, k)
-    flux_near = op.area(near..., grid) * masked_evaluate(op.inner, Val(m), near..., grid, u)
-    flux_far = op.area(far..., grid) * masked_evaluate(op.inner, Val(m), far..., grid, u)
-    term = w * (flux_far - flux_near)
-    return term +
-           nonseparable_weighted_flux_sum(i, j, k, grid, u, rest_w, rest_op, l1, l2, l3)
+    i, j, k, grid::G, operand::Field{L1,L2,L3}, weights::NTuple{D}, operators::NTuple{D, NonseparableDirectionalOperator}
+) where {G,L1,L2,L3,D}
+    flux_sum = zero(eltype(operand))
+    @unroll for d in 1:D
+        w, op = weights[d], operators[d]
+        m = dimension_of(op)
+        near, far = bounding_pair(Val(m), (L1, L2, L3)[m], i, j, k)
+        flux_near =
+            op.area(near..., grid) * masked_evaluate(op.inner, Val(m), near..., grid, operand)
+        flux_far =
+            op.area(far..., grid) * masked_evaluate(op.inner, Val(m), far..., grid, operand)
+        flux_sum += w * (flux_far - flux_near)
+    end
+    return flux_sum
 end
