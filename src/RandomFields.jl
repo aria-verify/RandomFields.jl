@@ -22,7 +22,7 @@ export generate!, IsotropicMatern, AnisotropicMatern, GRFWorkspace
 
 include("parameters.jl")
 include("grid_helpers.jl")
-include("directional_operators.jl")
+include("operators.jl")
 include("kernels.jl")
 include("workspace.jl")
 
