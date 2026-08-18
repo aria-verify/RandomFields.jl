@@ -24,7 +24,7 @@ include("parameters.jl")
 include("grid_helpers.jl")
 include("operators.jl")
 include("kernels.jl")
-include("workspace.jl")
+include("generator.jl")
 
 function matern_spde_alpha(smoothness, dimension)
     two_alpha = round(Int, 2 * smoothness) + dimension
