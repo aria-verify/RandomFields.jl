@@ -1,4 +1,4 @@
-struct GRFWorkspace{G,L,T,F,H,S}
+struct RandomFieldGenerator{G,L,T,F,H,S}
     grid::G
     location::L
 
@@ -16,16 +16,16 @@ struct GRFWorkspace{G,L,T,F,H,S}
 end
 
 function apply_modified_helmholtz_operator!(
-    result, operand, ws::GRFWorkspace, shift_coefficient=1.0
+    result, operand, generator::RandomFieldGenerator, shift_coefficient=1.0
 )
     fill_halo_regions!(operand)
     apply!(
         result,
         operand,
-        ws.modified_helmholtz_operator,
-        ws.grid,
+        generator.modified_helmholtz_operator,
+        generator.grid,
         shift_coefficient,
-        ws.weights,
+        generator.weights,
     )
     return result
 end
@@ -33,7 +33,7 @@ end
 get_weights(p::IsotropicMatern, dimension) = ntuple(_ -> p.length_scale^2, dimension)
 get_weights(p::AnisotropicMatern, dimension) = ntuple(n -> p.length_scale[n]^2, dimension)
 
-function GRFWorkspace(
+function RandomFieldGenerator(
     field, parameters::AbstractMaternParameters; reltol=1e-7, maxiter=prod(size(field))
 )
     grid = field.grid
@@ -75,7 +75,7 @@ function GRFWorkspace(
         apply_modified_helmholtz_operator!; template_field=field, reltol, maxiter
     )
 
-    return GRFWorkspace(
+    return RandomFieldGenerator(
         grid,
         loc,
         k,

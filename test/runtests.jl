@@ -60,11 +60,11 @@ end
         field = CenterField(grid)
         v = randn(rng, size(field))
         dimension = RandomFields.dimension_count(grid)
-        workspace = GRFWorkspace(field, parameters)
-        generate!(field, workspace, v)
+        generator = RandomFieldGenerator(field, parameters)
+        generate!(field, generator, v)
         @test any(field .!= 0)
         field_2 = CenterField(grid)
-        generate!(field_2, workspace, v)
+        generate!(field_2, generator, v)
         @test all(field .== field_2)
     end
 end
