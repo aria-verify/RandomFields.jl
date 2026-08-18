@@ -71,7 +71,7 @@ function apply_half_order_inverse!(
 end
 
 """
-    generate!(field, generator, v; sqrt_quadrature_points = 32)
+    generate!(field, generator, noise; sqrt_quadrature_points = 32)
 
 Overwrite `field` with an (approximate) draw from a mean-zero Gaussian random field with
 Matérn covariance, via the SPDE representation `(1 - Σᵢλᵢ²∂ᵢ²)^(ν+d/2) field ∝ white noise`.
@@ -79,11 +79,11 @@ Matérn covariance, via the SPDE representation `(1 - Σᵢλᵢ²∂ᵢ²)^(ν+
 - `generator`: a `RandomFieldGenerator` built once via `RandomFieldGenerator(field, parameters)`
    and  reusable across calls, with parameters an instance of `IsotropicMatern` or
    `AnisotropicMatern`.
-- `v`: standard normal variates, `size(v) == size(field)`.
+- `noise`: standard normal variates, `size(noise) == size(field)`.
 - `sqrt_quadrature_points`: quadrature points for the half-order factor, used only when
   `smoothness + dimension/2` is not an integer.
 """
-function generate!(field, generator::RandomFieldGenerator, v; sqrt_quadrature_points=32)
+function generate!(field, generator::RandomFieldGenerator, noise; sqrt_quadrature_points=32)
     field.grid === generator.grid ||
         throw(ArgumentError("generator was built for a different grid"))
     location(field) === generator.location ||
@@ -91,7 +91,7 @@ function generate!(field, generator::RandomFieldGenerator, v; sqrt_quadrature_po
 
     source_field, solution_field = generator.field_buffer_a, generator.field_buffer_b
 
-    generate_white_noise!(source_field, v, generator.white_noise_scale)
+    generate_white_noise!(source_field, noise, generator.white_noise_scale)
 
     solution_field, source_field = apply_repeated_inverse!(
         solution_field, source_field, generator

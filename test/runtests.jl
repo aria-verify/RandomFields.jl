@@ -58,13 +58,13 @@ end
             parameters in make_test_parameters(RandomFields.dimension_count(grid), eltype(grid))
         rng = Xoshiro(RANDOM_SEED)
         field = CenterField(grid)
-        v = randn(rng, size(field))
+        noise = randn(rng, size(field))
         dimension = RandomFields.dimension_count(grid)
         generator = RandomFieldGenerator(field, parameters)
-        generate!(field, generator, v)
+        generate!(field, generator, noise)
         @test any(field .!= 0)
         field_2 = CenterField(grid)
-        generate!(field_2, generator, v)
+        generate!(field_2, generator, noise)
         @test all(field .== field_2)
     end
 end
