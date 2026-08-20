@@ -1,6 +1,6 @@
 separable_metrics(::RectilinearGrid) = true
 separable_metrics(::LatitudeLongitudeGrid) = false
-separable_metrics(grid::ImmersedBoundaryGrid) = metric_separability(grid.underlying_grid)
+separable_metrics(grid::ImmersedBoundaryGrid) = separable_metrics(grid.underlying_grid)
 separable_metrics(::Oceananigans.Grids.AbstractGrid) = false
 
 is_immersed_cell(i, j, k, grid) = false
