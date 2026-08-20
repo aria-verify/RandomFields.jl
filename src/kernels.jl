@@ -28,11 +28,6 @@ end
     @inbounds accumulator[i, j, k] += weight * addend[i, j, k]
 end
 
-@kernel function _zero_kernel!(field)
-    i, j, k = @index(Global, NTuple)
-    @inbounds field[i, j, k] = 0
-end
-
 @kernel function _white_noise_scale_kernel!(out, grid, scale, volume_reciprocal)
     i, j, k = @index(Global, NTuple)
     @inbounds out[i, j, k] = scale * sqrt(volume_reciprocal(i, j, k, grid))
@@ -42,8 +37,6 @@ function run_kernel!(kernel, grid, args...; kwargs...)
     launch!(architecture(grid), grid, :xyz, kernel, args...; kwargs...)
     return nothing
 end
-
-zero_field!(field) = (run_kernel!(_zero_kernel!, field.grid, field); field)
 
 function accumulate_weighted!(acc, addend, w)
     (run_kernel!(_accumulate_weighted_kernel!, acc.grid, acc, addend, w); acc)
