@@ -15,7 +15,6 @@ end
 function apply_modified_helmholtz_operator!(
     result, operand, generator::RandomFieldGenerator, shift_coefficient=1.0
 )
-    fill_halo_regions!(operand)
     apply!(
         result,
         operand,

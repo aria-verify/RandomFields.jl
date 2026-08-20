@@ -3,11 +3,6 @@ separable_metrics(::LatitudeLongitudeGrid) = false
 separable_metrics(grid::ImmersedBoundaryGrid) = separable_metrics(grid.underlying_grid)
 separable_metrics(::Oceananigans.Grids.AbstractGrid) = false
 
-is_immersed_cell(i, j, k, grid) = false
-function is_immersed_cell(i, j, k, grid::ImmersedBoundaryGrid)
-    Oceananigans.ImmersedBoundaries.immersed_cell(i, j, k, grid)
-end
-
 active_dimensions(grid) = ntuple(m -> topology(grid)[m] !== Flat, Val(3))
 dimension_count(grid) = count(active_dimensions(grid))
 

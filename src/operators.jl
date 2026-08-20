@@ -6,7 +6,7 @@ struct SeparableDirectionalOperator{M,I,D} <: AbstractDirectionalOperator{M,I}
     "Derivative operation at dimension M flipped operand location"
     inner::I
     "Grid spacing operation at operand location"
-    delta::D 
+    delta::D
 end
 
 struct NonSeparableDirectionalOperator{M,I,A,V} <: AbstractDirectionalOperator{M,I}
@@ -40,7 +40,6 @@ function directional_operators(grid, loc)
     return ops
 end
 
-
 """
     masked_evaluate(op, m, i, j, k, grid, operand)
 
@@ -49,7 +48,7 @@ if either of the two cells bounding that point (along dimension `m`) is solid.
 """
 @inline function masked_evaluate(op, m, i, j, k, grid, operand)
     near = shift_index(m, i, j, k, -1)
-    blocked = is_immersed_cell(near..., grid) | is_immersed_cell(i, j, k, grid)
+    blocked = immersed_cell(near..., grid) | immersed_cell(i, j, k, grid)
     return blocked ? zero(eltype(operand)) : op(i, j, k, grid, operand)
 end
 
@@ -126,6 +125,7 @@ function apply!(
     shift_coefficient,
     weights,
 )
+    active_cells_map = get_active_cells_map(grid, Val(:xyz))
     run_kernel!(
         kernel(operator),
         grid,
@@ -134,6 +134,9 @@ function apply!(
         grid,
         shift_coefficient,
         weights,
-        differential_operators(operator),
+        differential_operators(operator);
+        active_cells_map,
     )
+    fill_halo_regions!(result)
+    isnothing(active_cells_map) && mask_immersed_field!(result)
 end

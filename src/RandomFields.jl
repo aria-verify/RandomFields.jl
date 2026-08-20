@@ -11,9 +11,10 @@ using Oceananigans:
     LatitudeLongitudeGrid,
     ImmersedBoundaryGrid
 using Oceananigans.Fields: location, interior
+using Oceananigans.ImmersedBoundaries: immersed_cell, mask_immersed_field!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Solvers: ConjugateGradientSolver, solve!
-using Oceananigans.Utils: launch!
+using Oceananigans.Utils: launch!, get_active_cells_map
 using KernelAbstractions: @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
 using SpecialFunctions: gamma
@@ -34,10 +35,19 @@ function matern_spde_alpha(smoothness, dimension)
     return round(Int, alpha)
 end
 
-function generate_white_noise!(field, v, white_noise_scale)
+function generate_white_noise!(field, noise, white_noise_scale)
     grid = field.grid
-    run_kernel!(_discretize_white_noise_kernel!, grid, field, grid, white_noise_scale, v)
+    active_cells_map = get_active_cells_map(grid, Val(:xyz))
+    run_kernel!(
+        _discretize_white_noise_kernel!,
+        grid,
+        field,
+        noise,
+        white_noise_scale;
+        active_cells_map,
+    )
     fill_halo_regions!(field)
+    isnothing(active_cells_map) && mask_immersed_field!(field)
     return field
 end
 
@@ -48,7 +58,7 @@ function apply_repeated_inverse!(
         zero_field!(solution_field)
         solve!(solution_field, generator.solver, source_field, generator, 1.0)
         fill_halo_regions!(solution_field)
-        mask_immersed_values!(solution_field)
+        mask_immersed_field!(solution_field)
         source_field, solution_field = solution_field, source_field
     end
     # Due to name swap in final iteration, source_field corresponds to final solution
@@ -69,6 +79,7 @@ function apply_half_order_inverse!(
         fill_halo_regions!(solution_field)
         accumulate_weighted!(field, solution_field, weight)
     end
+    mask_immersed_field!(solution_field)
     return field
 end
 
@@ -101,7 +112,7 @@ function generate!(field, generator::RandomFieldGenerator, noise)
     if generator.half
         apply_half_order_inverse!(field, source_field, solution_field, generator)
     else
-        copy_masked_result!(field, solution_field)
+        copyto!(field, solution_field)
     end
 
     return nothing
