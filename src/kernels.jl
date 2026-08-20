@@ -37,7 +37,3 @@ function run_kernel!(kernel, grid, args...; kwargs...)
     launch!(architecture(grid), grid, :xyz, kernel, args...; kwargs...)
     return nothing
 end
-
-function accumulate_weighted!(acc, addend, w)
-    (run_kernel!(_accumulate_weighted_kernel!, acc.grid, acc, addend, w); acc)
-end

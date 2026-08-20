@@ -51,6 +51,18 @@ function generate_white_noise!(field, noise, white_noise_scale)
     return field
 end
 
+function accumulate_weighted!(accumulator, addend, weight)
+    run_kernel!(
+        _accumulate_weighted_kernel!,
+        accumulator.grid,
+        accumulator,
+        addend,
+        weight;
+        active_cells_map=get_active_cells_map(accumulator.grid, Val(:xyz)),
+    )
+    return nothing
+end
+
 function apply_repeated_inverse!(
     solution_field, source_field, generator::RandomFieldGenerator
 )
