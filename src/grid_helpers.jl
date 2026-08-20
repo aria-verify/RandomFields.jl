@@ -22,7 +22,9 @@ function lookup_operator(prefix::Symbol, L1, L2, L3)
     )
 end
 
-flip_location_in_dimension(loc, m) = ntuple(n -> n == m ? flip_location(loc[n]) : loc[n], Val(3))
+function flip_location_in_dimension(loc, m)
+    ntuple(n -> n == m ? flip_location(loc[n]) : loc[n], Val(3))
+end
 
 """
     shift_index(m, i, j, k, offset)
@@ -44,9 +46,5 @@ Assumes `loc` is the *output* (field's own) location in dimension `m`.
 """
 function bounding_pair end
 
-@inline bounding_pair(m, ::Type{Center}, i, j, k) = (
-    shift_index(m, i, j, k, 0), shift_index(m, i, j, k, 1)
-)
-@inline bounding_pair(m, ::Type{Face}, i, j, k) = (
-    shift_index(m, i, j, k, -1), shift_index(m, i, j, k, 0)
-)
+@inline bounding_pair(m, ::Type{Center}, i, j, k) = ((i, j, k), shift_index(m, i, j, k, 1))
+@inline bounding_pair(m, ::Type{Face}, i, j, k) = (shift_index(m, i, j, k, -1), (i, j, k))
