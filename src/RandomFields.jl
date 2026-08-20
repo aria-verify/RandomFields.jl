@@ -27,14 +27,6 @@ include("operators.jl")
 include("kernels.jl")
 include("generator.jl")
 
-function matern_spde_alpha(smoothness, dimension)
-    two_alpha = round(Int, 2 * smoothness) + dimension
-    two_alpha > 0 || throw(ArgumentError("smoothness + dimension/2 must be positive"))
-    alpha = two_alpha / 2
-    isinteger(alpha) || throw(ArgumentError("smoothness + dimension/2 must be integer"))
-    return round(Int, alpha)
-end
-
 function generate_white_noise!(field, noise, white_noise_scale)
     grid = field.grid
     active_cells_map = get_active_cells_map(grid, Val(:xyz))
@@ -66,7 +58,7 @@ end
 function apply_repeated_inverse!(
     solution_field, source_field, generator::RandomFieldGenerator
 )
-    for _ in 1:generator.k
+    for _ in 1:generator.n_inverse_apply
         fill!(solution_field, zero(eltype(solution_field)))
         solve!(solution_field, generator.solver, source_field, generator, 1.0)
         fill_halo_regions!(solution_field)
@@ -121,7 +113,7 @@ function generate!(field, generator::RandomFieldGenerator, noise)
         solution_field, source_field, generator
     )
 
-    if generator.half
+    if generator.require_half_order
         apply_half_order_inverse!(field, source_field, solution_field, generator)
     else
         copyto!(field, solution_field)

@@ -1,8 +1,8 @@
 struct RandomFieldGenerator{G,L,T,F,H,S}
     grid::G
     location::L
-    k::Int
-    half::Bool
+    n_inverse_apply::Int
+    require_half_order::Bool
     weights::Tuple{Vararg{T}}
     field_buffer_a::F
     field_buffer_b::F
@@ -26,9 +26,6 @@ function apply_modified_helmholtz_operator!(
     return result
 end
 
-get_weights(p::IsotropicMatern, dimension) = ntuple(_ -> p.length_scale^2, dimension)
-get_weights(p::AnisotropicMatern, dimension) = ntuple(n -> p.length_scale[n]^2, dimension)
-
 function RandomFieldGenerator(
     field,
     parameters::AbstractMaternParameters;
@@ -43,11 +40,9 @@ function RandomFieldGenerator(
     check_parameter_dimension(parameters, dimension)
 
     alpha = matern_spde_alpha(parameters.smoothness, dimension)
-    k, half = alpha ÷ 2, isodd(alpha)
-
+    n_inverse_apply, require_half_order = alpha ÷ 2, isodd(alpha)
     scale = variance_matching_constant(parameters, alpha, dimension)
-
-    weights = get_weights(parameters, dimension)
+    weights = derivative_weights(parameters, dimension)
 
     field_buffer_a, field_buffer_b = similar(field), similar(field)
 
@@ -78,8 +73,8 @@ function RandomFieldGenerator(
     return RandomFieldGenerator(
         grid,
         loc,
-        k,
-        half,
+        n_inverse_apply,
+        require_half_order,
         weights,
         field_buffer_a,
         field_buffer_b,

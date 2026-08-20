@@ -66,3 +66,14 @@ function variance_matching_constant(
         ),
     )
 end
+
+derivative_weights(p::IsotropicMatern, dimension) = ntuple(_ -> p.length_scale^2, dimension)
+derivative_weights(p::AnisotropicMatern, dimension) = ntuple(n -> p.length_scale[n]^2, dimension)
+
+function matern_spde_alpha(smoothness, dimension)
+    two_alpha = round(Int, 2 * smoothness) + dimension
+    two_alpha > 0 || throw(ArgumentError("smoothness + dimension/2 must be positive"))
+    alpha = two_alpha / 2
+    isinteger(alpha) || throw(ArgumentError("smoothness + dimension/2 must be integer"))
+    return round(Int, alpha)
+end
