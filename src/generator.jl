@@ -23,7 +23,7 @@ function apply_modified_helmholtz_operator!(
         shift_coefficient,
         generator.weights,
     )
-    return result
+    return nothing
 end
 
 function RandomFieldGenerator(

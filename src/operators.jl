@@ -139,4 +139,5 @@ function apply!(
     )
     fill_halo_regions!(result)
     isnothing(active_cells_map) && mask_immersed_field!(result)
+    return nothing
 end
