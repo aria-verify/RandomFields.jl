@@ -27,6 +27,13 @@ include("operators.jl")
 include("kernels.jl")
 include("generator.jl")
 
+"""
+    zero!(field)
+
+Fill `field` with zeros in-place.
+"""
+zero!(field::Field) = fill!(field, zero(eltype(field)))
+
 function generate_white_noise!(field, noise, white_noise_scale)
     grid = field.grid
     active_cells_map = get_active_cells_map(grid, Val(:xyz))
@@ -59,7 +66,7 @@ function apply_repeated_inverse!(
     solution_field, source_field, generator::RandomFieldGenerator
 )
     for _ in 1:generator.n_inverse_apply
-        fill!(solution_field, zero(eltype(solution_field)))
+        zero!(solution_field)
         solve!(solution_field, generator.solver, source_field, generator, 1.0)
         fill_halo_regions!(solution_field)
         mask_immersed_field!(solution_field)
@@ -72,13 +79,13 @@ end
 function apply_half_order_inverse!(
     field, solution_field, rhs_field, generator::RandomFieldGenerator
 )
-    fill!(field, zero(eltype(field)))
+    zero!(field)
     # Approximate A^(-1/2) = (2/π) ∫₀^{π/2} (A + tan²θ)⁻¹ sec²θ dθ via midpoint quadrature
     for m in 1:generator.n_sqrt_quadrature_points
         θ = (m - 0.5) * (π / 2) / generator.n_sqrt_quadrature_points
         shift_coefficient = 1 + tan(θ)^2
         weight = (1 / generator.n_sqrt_quadrature_points) * sec(θ)^2
-        fill!(solution_field, zero(eltype(solution_field)))
+        zero!(solution_field)
         solve!(solution_field, generator.solver, rhs_field, generator, shift_coefficient)
         accumulate_weighted!(field, solution_field, weight)
     end
