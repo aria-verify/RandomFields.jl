@@ -7,11 +7,13 @@ authors = ["Matt Graham <m.graham@ucl.ac.uk> and contributors"]
 projects = ["test", "docs"]
 
 [deps]
+DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 
 [compat]
+DocStringExtensions = "0.9.5"
 KernelAbstractions = "0.9.42"
 Oceananigans = "0.110.15"
 SpecialFunctions = "2.8.3"

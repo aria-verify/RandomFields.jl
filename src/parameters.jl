@@ -9,9 +9,15 @@ end
 
 abstract type AbstractMaternParameters{T} end
 
+"""
+Parameters for an isotropic Matérn covariance function with a single length-scale parameter.
+"""
 struct IsotropicMatern{T} <: AbstractMaternParameters{T}
+    "Scalar length scale parameter."
     length_scale::T
+    "Scalar output scale parameter."
     output_scale::T
+    "Scalar smoothness index - should be integer or half-integer."
     smoothness::T
     function IsotropicMatern{T}(length_scale::T, output_scale::T, smoothness::T) where {T}
         check_matern_parameters(length_scale, output_scale, smoothness)
@@ -23,9 +29,15 @@ function IsotropicMatern(; length_scale::T, output_scale::T, smoothness::T) wher
     IsotropicMatern{T}(length_scale, output_scale, smoothness)
 end
 
+"""
+Parameters for an anisotropic Matérn covariance function with a per-dimension length-scale parameters.
+"""
 struct AnisotropicMatern{T,N} <: AbstractMaternParameters{T}
+    "Tuple of length scale parameters, one per active dimension."
     length_scale::NTuple{N,T}
+    "Scalar output scale parameter."
     output_scale::T
+    "Scalar smoothness index - should be integer or half-integer."
     smoothness::T
     function AnisotropicMatern{T,N}(
         length_scale::NTuple{N,T}, output_scale::T, smoothness::T

@@ -2,6 +2,9 @@ abstract type AbstractDirectionalOperator{M,I} end
 
 dimension_of(::AbstractDirectionalOperator{M}) where {M} = M
 
+"""
+Directional differential operator on a dimension `M` for grids with separable metrics.
+"""
 struct SeparableDirectionalOperator{M,I,D} <: AbstractDirectionalOperator{M,I}
     "Derivative operation at dimension M flipped operand location"
     inner::I
@@ -9,6 +12,9 @@ struct SeparableDirectionalOperator{M,I,D} <: AbstractDirectionalOperator{M,I}
     delta::D
 end
 
+"""
+Directional differential operator on a dimension `M` for grids with non-separable metrics.
+"""
 struct NonSeparableDirectionalOperator{M,I,A,V} <: AbstractDirectionalOperator{M,I}
     "Derivative operation at dimension M flipped operand location"
     inner::I
@@ -18,6 +24,10 @@ struct NonSeparableDirectionalOperator{M,I,A,V} <: AbstractDirectionalOperator{M
     volume::V
 end
 
+"""
+Construct directional differential operators for a field on a grid `grid` and with
+staggered grid locations tuple `loc`.
+"""
 function directional_operators(grid, loc)
     ops = ()
     active = active_dimensions(grid)
@@ -41,8 +51,6 @@ function directional_operators(grid, loc)
 end
 
 """
-    masked_evaluate(op, m, i, j, k, grid, operand)
-
 Zero out a directional derivative  `op` evaluated at `(i,j,k)` on `grid` with `operand`
 if either of the two cells bounding that point (along dimension `m`) is solid.
 """
@@ -52,6 +60,14 @@ if either of the two cells bounding that point (along dimension `m`) is solid.
     return blocked ? zero(eltype(operand)) : op(i, j, k, grid, operand)
 end
 
+"""
+    $(FUNCTIONNAME)(i, j, k, grid, op, far, near, flux_far, flux_near)
+
+Compute second derivative term for a field on grid `grid` with direction differential operator
+`op` at indices `(i, j, k)` given the computed flux terms `flux_near` and `flux_far` at near 
+and far offset index tuples `far` and `near`.
+"""
+function second_derivative_term end
 @inline function second_derivative_term(
     i, j, k, grid, op::SeparableDirectionalOperator, ::Tuple, ::Tuple, flux_far, flux_near
 )
@@ -73,6 +89,11 @@ end
     op.volume(i, j, k, grid)
 end
 
+"""
+Compute the weighted second derivative sum for a field `operand` on grid `grid` at
+indices `(i, j, k)` with per-dimension derivative weights `weights` and directional
+derivative operators `operators`.
+"""
 @inline function weighted_second_derivative_sum(
     i,
     j,

@@ -1,3 +1,8 @@
+"""
+Generate Gaussian Markov random fields with Matérn covariance functions on Oceananigans grids.
+
+$(EXPORTS)
+"""
 module RandomFields
 
 using Oceananigans
@@ -18,8 +23,31 @@ using Oceananigans.Utils: launch!, get_active_cells_map
 using KernelAbstractions: @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
 using SpecialFunctions: gamma
+using DocStringExtensions
 
 export generate!, IsotropicMatern, AnisotropicMatern, RandomFieldGenerator
+
+@template FUNCTIONS = """
+                      $(DOCSTRING)
+
+                      $(TYPEDSIGNATURES)
+                      """
+
+@template METHODS = """
+                    $(SIGNATURES)
+
+                    $(DOCSTRING)
+                    """
+
+@template TYPES = """
+                  $(TYPEDEF)
+
+                  $(DOCSTRING)
+
+                  ## Fields
+
+                  $(TYPEDFIELDS)
+                  """
 
 include("parameters.jl")
 include("grid_helpers.jl")
@@ -27,11 +55,7 @@ include("operators.jl")
 include("kernels.jl")
 include("generator.jl")
 
-"""
-    zero!(field)
-
-Fill `field` with zeros in-place.
-"""
+"""Fill `field` with zeros in-place."""
 zero!(field::Field) = fill!(field, zero(eltype(field)))
 
 function generate_white_noise!(field, noise, white_noise_scale)
@@ -95,8 +119,6 @@ function apply_half_order_inverse!(
 end
 
 """
-    generate!(field, generator, noise)
-
 Overwrite `field` with an (approximate) draw from a mean-zero Gaussian random field with
 Matérn covariance, via the SPDE representation `(1 - Σᵢλᵢ²∂ᵢ²)^(ν+d/2) f = τ w` where
 `λᵢ` are per-dimension length scale parameters, `ν` a smoothness index, `d` the spatial
@@ -121,7 +143,7 @@ function generate!(field, generator::RandomFieldGenerator, noise)
     )
 
     if generator.require_half_order
-        apply_half_order_inverse!(field, source_field, solution_field, generator)
+        apply_half_order_inverse!(solution_field, field, source_field, generator)
     else
         copyto!(field, solution_field)
     end

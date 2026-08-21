@@ -27,7 +27,7 @@ function flip_location_in_dimension(loc, m)
 end
 
 """
-    shift_index(m, i, j, k, offset)
+    $FUNCTIONNAME(m, i, j, k, offset)
 
 Shift indices `(i, j, k)` by `offset` cells along dimension `m`.
 """
@@ -38,7 +38,7 @@ function shift_index end
 @inline shift_index(::Val{3}, i, j, k, offset) = (i, j, k + offset)
 
 """
-    bounding_pair(m, loc, i, j, k)
+    $FUNCTIONNAME(m, i, j, k)
 
 The two indices, in (near, far) order, of the flipped-location evaluation points
 that bound a field's own location at indices `(i, j, k)` in dimension `m`. 
