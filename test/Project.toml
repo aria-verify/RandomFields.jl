@@ -10,5 +10,6 @@ RandomFields = {path = ".."}
 
 [compat]
 Aqua = "0.8.16"
+Oceananigans = "0.111.0"
 Test = "1.11.0"
 Random = "1.11.0"
