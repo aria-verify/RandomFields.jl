@@ -186,9 +186,11 @@ function probe_operator(result, operand, apply!, args, Nx, Ny, Nz, R, atol, peri
     baseline = copy(res_int)
     b = vec(Array(baseline))
 
+    T = eltype(result)
+
     rows = Int[]
     cols = Int[]
-    vals = Float64[]
+    vals = T[]
 
     for ck in 0:(Pz - 1), cj in 0:(Py - 1), ci in 0:(Px - 1)
         ri = (ci + 1):Px:Nx
@@ -214,7 +216,7 @@ function probe_operator(result, operand, apply!, args, Nx, Ny, Nz, R, atol, peri
 
             push!(rows, lin[i, j, k])
             push!(cols, lin[xi, xj, xk])
-            push!(vals, Float64(v))
+            push!(vals, T(v))
         end
     end
 
