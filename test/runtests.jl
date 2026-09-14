@@ -29,7 +29,7 @@ function make_test_grids(
     grid_types=(RectilinearGrid, LatitudeLongitudeGrid),
     float_types=(Float32, Float64),
 )
-    (
+    return (
         make_test_grid(g, d, f) for d in dimensions, g in grid_types, f in float_types if
         # Skip one-dimensional lat-lon grid as some operators appear to not be defined
         g !== LatitudeLongitudeGrid || d >= 2
@@ -37,7 +37,7 @@ function make_test_grids(
 end
 
 function make_test_parameters(dimension, T)
-    (
+    return (
         IsotropicMatern(;
             length_scale=one(T), output_scale=one(T), smoothness=T((dimension / 2) + 1)
         ),
@@ -53,18 +53,56 @@ end
     @testset "Code quality (Aqua.jl)" begin
         Aqua.test_all(RandomFields)
     end
-    @testset "generate! on grid $(summary(grid)) with parameters $(parameters)" for
-            grid in make_test_grids(),
-            parameters in make_test_parameters(RandomFields.dimension_count(grid), eltype(grid))
+    @testset "$(
+        "generate! on grid $(summary(grid)) with parameters $(parameters)"
+    )" for grid in make_test_grids(),
+        parameters in make_test_parameters(RandomFields.dimension_count(grid), eltype(grid))
+
         rng = Xoshiro(RANDOM_SEED)
         field = CenterField(grid)
         noise = randn(rng, size(field))
-        dimension = RandomFields.dimension_count(grid)
         generator = RandomFieldGenerator(field, parameters)
         generate!(field, generator, noise)
         @test any(field .!= 0)
         field_2 = CenterField(grid)
         generate!(field_2, generator, noise)
         @test all(field .== field_2)
+    end
+    @testset "$(
+        "Solver $(solver_type) on grid $(summary(grid)) with parameters $(parameters) inverts apply!"
+    )" for solver_type in (CGSolver, SparseSolver),
+        grid in make_test_grids(),
+        parameters in make_test_parameters(RandomFields.dimension_count(grid), eltype(grid))
+
+        T = eltype(grid)
+        rng = Xoshiro(RANDOM_SEED)
+        field = CenterField(grid)
+        noise = randn(rng, size(field))
+        solver_kwargs = if (solver_type <: RandomFields.AbstractIterativeSolver)
+            (; reltol=sqrt(eps(T)))
+        else
+            (;)
+        end
+        generator = RandomFieldGenerator(field, parameters; solver_type, solver_kwargs...)
+        white_noise, reconstructed_white_noise = similar(field), similar(field)
+        RandomFields.generate_white_noise!(white_noise, noise, generator.white_noise_scale)
+        RandomFields.apply_inverse!(field, white_noise, generator.solver)
+        RandomFields.apply!(
+            reconstructed_white_noise,
+            field,
+            generator.modified_helmholtz_operator,
+            grid,
+            1.0,
+            generator.weights,
+        )
+        tolerance = 1000 * (
+            if solver_type <: RandomFields.AbstractIterativeSolver
+                solver_kwargs.reltol
+            else
+                eps(T)
+            end
+        )
+        @test maximum(abs, white_noise - reconstructed_white_noise) /
+              maximum(abs, white_noise) < tolerance
     end
 end
