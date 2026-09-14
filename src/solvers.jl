@@ -1,4 +1,6 @@
 abstract type AbstractSolver end
+abstract type AbstractIterativeSolver <: AbstractSolver end
+abstract type AbstractDirectSolver <: AbstractSolver end
 
 """
     $(FUNCTIONNAME)(solution, rhs, solver)
@@ -64,7 +66,7 @@ function accumulate_weighted!(accumulator, addend, weight)
 end
 
 """Linear system solver wrapping Oceananigans iterative conjugate gradients solver."""
-struct CGSolver{S,F} <: AbstractSolver
+struct CGSolver{S,F} <: AbstractIterativeSolver
     "Oceananigans iterative conjugate gradient linear system solver"
     solver::S
     "Field buffer used to store intermediate solutions during computation"
@@ -236,7 +238,7 @@ end
     end
 end
 
-struct SparseSolver{C,V} <: AbstractSolver
+struct SparseSolver{C,V} <: AbstractDirectSolver
     cholesky_factor::C
     rhs_buffer::V
     solution_buffer::V
