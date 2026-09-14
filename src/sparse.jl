@@ -1,3 +1,6 @@
+using SparseArrays
+using Oceananigans: Periodic
+
 function get_sparse_operator(
     result, operand, apply!, args...; stencil_radius::Int=2, verify::Bool=true, atol::Real=0
 )

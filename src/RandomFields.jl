@@ -6,26 +6,9 @@ $(EXPORTS)
 module RandomFields
 
 using Oceananigans
-using Oceananigans:
-    Center,
-    Face,
-    Flat,
-    Periodic,
-    topology,
-    architecture,
-    RectilinearGrid,
-    LatitudeLongitudeGrid,
-    ImmersedBoundaryGrid
 using Oceananigans.Fields: location, interior
-using Oceananigans.ImmersedBoundaries: immersed_cell, mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Solvers: ConjugateGradientSolver, solve!
-using Oceananigans.Utils: launch!, get_active_cells_map
-using KernelAbstractions: @kernel, @index
-using KernelAbstractions.Extras.LoopInfo: @unroll
-using SpecialFunctions: gamma
-using LinearAlgebra
-using SparseArrays
 using DocStringExtensions
 
 export generate!

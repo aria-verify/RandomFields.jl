@@ -1,3 +1,6 @@
+using KernelAbstractions.Extras.LoopInfo: @unroll
+using Oceananigans.ImmersedBoundaries: immersed_cell
+
 abstract type AbstractDirectionalOperator{M,I} end
 
 dimension_of(::AbstractDirectionalOperator{M}) where {M} = M
@@ -64,7 +67,7 @@ end
     $(FUNCTIONNAME)(i, j, k, grid, op, far, near, flux_far, flux_near)
 
 Compute second derivative term for a field on grid `grid` with direction differential operator
-`op` at indices `(i, j, k)` given the computed flux terms `flux_near` and `flux_far` at near 
+`op` at indices `(i, j, k)` given the computed flux terms `flux_near` and `flux_far` at near
 and far offset index tuples `far` and `near`.
 """
 function second_derivative_term end
@@ -123,7 +126,7 @@ struct IsotropicModifiedHelmholtzOperator{L} <: AbstractModifiedHelmholtzOperato
 end
 
 function kernel(::IsotropicModifiedHelmholtzOperator)
-    _isotropic_modified_helmholtz_operator_kernel!
+    return _isotropic_modified_helmholtz_operator_kernel!
 end
 differential_operators(op::IsotropicModifiedHelmholtzOperator) = op.laplacian_operator
 
@@ -132,10 +135,10 @@ struct AnisotropicModifiedHelmholtzOperator{D} <: AbstractModifiedHelmholtzOpera
 end
 
 function kernel(::AnisotropicModifiedHelmholtzOperator)
-    _anisotropic_modified_helmholtz_operator_kernel!
+    return _anisotropic_modified_helmholtz_operator_kernel!
 end
 function differential_operators(op::AnisotropicModifiedHelmholtzOperator)
-    op.differential_operators
+    return op.differential_operators
 end
 
 function apply!(

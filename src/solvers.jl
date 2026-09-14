@@ -1,3 +1,6 @@
+using Oceananigans.Solvers: ConjugateGradientSolver, solve!
+using LinearAlgebra
+
 abstract type AbstractSolver end
 abstract type AbstractIterativeSolver <: AbstractSolver end
 abstract type AbstractDirectSolver <: AbstractSolver end

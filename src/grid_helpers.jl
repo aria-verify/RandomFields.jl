@@ -1,3 +1,6 @@
+using Oceananigans:
+    Center, Face, Flat, ImmersedBoundaryGrid, LatitudeLongitudeGrid, topology
+
 separable_metrics(::RectilinearGrid) = true
 separable_metrics(::LatitudeLongitudeGrid) = false
 separable_metrics(grid::ImmersedBoundaryGrid) = separable_metrics(grid.underlying_grid)
@@ -14,7 +17,7 @@ flip_location(::Type{Center}) = Face
 flip_location(::Type{Face}) = Center
 
 function lookup_operator(prefix::Symbol, L1, L2, L3)
-    getfield(
+    return getfield(
         Oceananigans.Operators,
         Symbol(
             prefix, location_character(L1), location_character(L2), location_character(L3)
@@ -23,7 +26,7 @@ function lookup_operator(prefix::Symbol, L1, L2, L3)
 end
 
 function flip_location_in_dimension(loc, m)
-    ntuple(n -> n == m ? flip_location(loc[n]) : loc[n], Val(3))
+    return ntuple(n -> n == m ? flip_location(loc[n]) : loc[n], Val(3))
 end
 
 """
@@ -41,7 +44,7 @@ function shift_index end
     $FUNCTIONNAME(m, i, j, k)
 
 The two indices, in (near, far) order, of the flipped-location evaluation points
-that bound a field's own location at indices `(i, j, k)` in dimension `m`. 
+that bound a field's own location at indices `(i, j, k)` in dimension `m`.
 Assumes `loc` is the *output* (field's own) location in dimension `m`.
 """
 function bounding_pair end

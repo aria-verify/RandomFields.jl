@@ -1,3 +1,7 @@
+using Oceananigans: architecture
+using Oceananigans.Utils: get_active_cells_map, launch!
+using KernelAbstractions: @index, @kernel
+
 @kernel function _isotropic_modified_helmholtz_operator_kernel!(
     result, operand, grid, shift_coefficient, weights, laplacian
 )
