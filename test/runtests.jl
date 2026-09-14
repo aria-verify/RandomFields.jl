@@ -24,16 +24,44 @@ function make_test_grid(
     return grid_type(CPU(), float_type; extents..., size, topology, halo)
 end
 
+function make_test_immersed_grid(underlying_grid_type, float_type)
+    underlying_grid = make_test_grid(underlying_grid_type, 3, float_type)
+    bottom_height(x, y) = -(x * y) / (underlying_grid.Lx * underlying_grid.Ly)
+    return ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+end
+
+function skip_grid_config(dimension, grid_type, float_type, non_flat_topology)
+    if dimension == 1 && grid_type === LatitudeLongitudeGrid
+        # Not all operators defined for one-dimensional latitude-longitude grids
+        return true
+    elseif grid_type === LatitudeLongitudeGrid && non_flat_topology === Periodic
+        # Latitude-longitude grids cannot have periodic latitude
+        return true
+    else
+        return false
+    end
+end
+
 function make_test_grids(
     dimensions=1:3,
     grid_types=(RectilinearGrid, LatitudeLongitudeGrid),
     float_types=(Float32, Float64),
+    non_flat_topologies=(Bounded, Periodic),
+    include_immersed_grids=true,
 )
-    return (
-        make_test_grid(g, d, f) for d in dimensions, g in grid_types, f in float_types if
-        # Skip one-dimensional lat-lon grid as some operators appear to not be defined
-        g !== LatitudeLongitudeGrid || d >= 2
+    underlying_grids = (
+        make_test_grid(g, d, f, t) for
+        d in dimensions, g in grid_types, f in float_types, t in non_flat_topologies if
+        !skip_grid_config(d, g, f, t)
     )
+    if !include_immersed_grids
+        return underlying_grids
+    else
+        return Base.Iterators.flatten((
+            underlying_grids,
+            (make_test_immersed_grid(g, f) for g in grid_types, f in float_types),
+        ))
+    end
 end
 
 function make_test_parameters(dimension, T)
