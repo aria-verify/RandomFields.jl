@@ -20,20 +20,6 @@ struct RandomFieldGenerator{G,L,T,F,H,S}
     solver::S
 end
 
-function apply_modified_helmholtz_operator!(
-    result, operand, generator::RandomFieldGenerator, shift_coefficient=1.0
-)
-    apply!(
-        result,
-        operand,
-        generator.modified_helmholtz_operator,
-        generator.grid,
-        shift_coefficient,
-        generator.weights,
-    )
-    return nothing
-end
-
 """
 $(SIGNATURES)
 
