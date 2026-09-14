@@ -124,7 +124,7 @@ end
 
 # Square root of linear system is assumed to be symmetric so inverse is self-adjoint
 function apply_half_order_inverse_adjoint!(solution, rhs, solver::CGSolver)
-    return apply_half_order_inverse_adjoint!(solution, rhs, solver)
+    return apply_half_order_inverse!(solution, rhs, solver)
 end
 
 function get_sparse_operator(
