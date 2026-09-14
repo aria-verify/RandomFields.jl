@@ -283,7 +283,7 @@ end
 function apply_half_order_inverse_adjoint!(solution, rhs, solver::SparseSolver)
     copyto!(solver.rhs_buffer, rhs)
     # \ operation allocates internally in CHOLMOD solve but no ldiv! method currently available
-    copyto!(solver.solution_buffer, solver.cholesky_factor.PL \ solver.rhs_buffer)
+    copyto!(solver.solution_buffer, solver.cholesky_factor.UP \ solver.rhs_buffer)
     copyto!(solution, solver.solution_buffer)
     fill_halo_regions!(solution)
     mask_immersed_field!(solution)
