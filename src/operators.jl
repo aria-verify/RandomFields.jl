@@ -1,5 +1,4 @@
 using KernelAbstractions.Extras.LoopInfo: @unroll
-using Oceananigans.ImmersedBoundaries: immersed_cell
 
 abstract type AbstractDirectionalOperator{M,I} end
 

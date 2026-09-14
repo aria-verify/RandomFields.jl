@@ -140,7 +140,24 @@ function SparseSolver(apply!, field_template; stencil_radius::Int=2)
     operand = similar(field_template)
     shift_coefficient = 1.0
     A, b = get_sparse_operator(result, operand, apply!, shift_coefficient; stencil_radius)
+    # Modfied Helmholtz operator should be homogeneous and so the affine offset vector
+    # b should be all zero
     @assert iszero(b)
+    if (field_template.grid isa ImmersedBoundaryGrid)
+        # For immersed grids sparse operator A will be singular due to apply! having no effect
+        # on cell indices corresponding to inactive immersed cells, with corresponding rows /
+        # columns with all zero entries. In this case we regularize the operator A by adding
+        # an arbitrary value ε=1 to the corresponding diagonal entries. When solving a system
+        # in A, because inactive rows/columns are exactly zero, the (non-regularized) A is
+        # exactly block diagonal when permuted so that there are contiguous {active, inactive}
+        # index sets; adding ε > 0 to inactive diagonal entries only affects the decoupled
+        # inactive block and leaves the solution for the active block unchanged, therefore
+        # the solution restricted to the active indices is unchanged. Providing the solution
+        # is masked to zero inactive indices we will still therefore get a valid solution.
+        inactive_indices = regularize_operator!(A; ε=1.0)
+        immersed_indices = get_immersed_indices(field_template)
+        @assert Set(inactive_indices) == Set(immersed_indices)
+    end
     cholesky_factor = cholesky(Symmetric(A))
     rhs_buffer = similar(vec(interior(field_template)))
     solution_buffer = similar(rhs_buffer)

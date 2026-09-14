@@ -7,7 +7,7 @@ module RandomFields
 
 using Oceananigans
 using Oceananigans.Fields: location, interior
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_cell
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using DocStringExtensions
 

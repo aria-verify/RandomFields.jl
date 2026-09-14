@@ -111,3 +111,17 @@ end
         return (1 <= raw <= N) ? raw : nothing
     end
 end
+
+"""
+Regularize a symmetric stencil operator `A` for which some rows / columns are all zero
+due to, for example, presence of inactive immersed cells in the corresponding fields,
+by adding an arbitrary value `ε` to the corresponding diagonal entries.
+"""
+function regularize_operator!(A::SparseMatrixCSC; ε::Real=1.0)
+    sum_abs_rows = vec(sum(abs, A; dims=2))
+    inactive = findall(iszero, sum_abs_rows)
+    for i in inactive
+        A[i, i] = ε
+    end
+    return inactive
+end

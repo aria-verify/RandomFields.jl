@@ -51,3 +51,20 @@ function bounding_pair end
 
 @inline bounding_pair(m, ::Type{Center}, i, j, k) = ((i, j, k), shift_index(m, i, j, k, 1))
 @inline bounding_pair(m, ::Type{Face}, i, j, k) = (shift_index(m, i, j, k, -1), (i, j, k))
+
+"""
+Get a vector of linear indices in to array corresponding to interior of `field` for cells
+which are inactive as they are fully immersed.
+"""
+function get_immersed_indices(field)
+    grid = field.grid
+    Nx, Ny, Nz = size(field)
+    lin = LinearIndices((Nx, Ny, Nz))
+    inactive = Int[]
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        if immersed_cell(i, j, k, grid)
+            push!(inactive, lin[i, j, k])
+        end
+    end
+    return inactive
+end
