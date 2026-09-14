@@ -16,15 +16,14 @@ function apply_inverse! end
 """
     $(FUNCTIONNAME)(solution, rhs, solver)
 
-Apply the inverse of the square-root (half-order) of linear operator solved for by `solver`
-to the right-hand side `rhs` and write the solution in-place to `solution`, where `rhs`
-and `solution` are both fields.
+Apply the inverse of the square-root of linear operator solved for by `solver` to the right-hand
+side `rhs` and write the solution in-place to `solution`, where `rhs` and `solution` are both fields.
 
 Solves `sqrt(A) * x = b` where `A` is the linear system solved by `solver` and `sqrt(A)` is
 a matrix such that `sqrt(A) * sqrt(A)' === A`, `b` is the vectorization of the `rhs` field
 and `x` is the vectorization of the `solution` field.
 """
-function apply_half_order_inverse! end
+function apply_inverse_sqrt! end
 
 """
     $(FUNCTIONNAME)(solution, rhs, solver)
@@ -40,15 +39,15 @@ function apply_inverse_adjoint! end
 """
     $(FUNCTIONNAME)(solution, rhs, solver)
 
-Apply the inverse of the adjoint of the square-root (half-order) of linear operator solved for by
-`solver` to the right-hand side `rhs` and write the solution in-place to `solution`, where `rhs`
-and `solution` are both fields.
+Apply the inverse of the adjoint of the square-root of linear operator solved for by `solver`
+to the right-hand side `rhs` and write the solution in-place to `solution`, where `rhs` and
+`solution` are both fields.
 
 Solves `sqrt(A)' * x = b` where `A` is the linear system solved by `solver` and `sqrt(A)` is
 a matrix such that `sqrt(A) * sqrt(A)' === A`, `b` is the vectorization of the `rhs` field
 and `x` is the vectorization of the `solution` field.
 """
-function apply_half_order_inverse_adjoint! end
+function apply_inverse_sqrt_adjoint! end
 
 """Fill `field` with zeros in-place."""
 zero!(field::Field) = fill!(field, zero(eltype(field)))
@@ -101,7 +100,7 @@ function apply_inverse!(solution, rhs, solver::CGSolver)
     return nothing
 end
 
-function apply_half_order_inverse!(solution, rhs, solver::CGSolver)
+function apply_inverse_sqrt!(solution, rhs, solver::CGSolver)
     zero!(solution)
     # Approximate A^(-1/2) = (2/π) ∫₀^{π/2} (A + tan²θ)⁻¹ sec²θ dθ via midpoint quadrature
     for m in 1:solver.n_sqrt_quadrature_points
@@ -123,8 +122,8 @@ function apply_inverse_adjoint!(solution, rhs, solver::CGSolver)
 end
 
 # Square root of linear system is assumed to be symmetric so inverse is self-adjoint
-function apply_half_order_inverse_adjoint!(solution, rhs, solver::CGSolver)
-    return apply_half_order_inverse!(solution, rhs, solver)
+function apply_inverse_sqrt_adjoint!(solution, rhs, solver::CGSolver)
+    return apply_inverse_sqrt!(solution, rhs, solver)
 end
 
 function get_sparse_operator(
@@ -265,7 +264,7 @@ function apply_inverse!(solution, rhs, solver::SparseSolver)
     return nothing
 end
 
-function apply_half_order_inverse!(solution, rhs, solver::SparseSolver)
+function apply_inverse_sqrt!(solution, rhs, solver::SparseSolver)
     copyto!(solver.rhs_buffer, rhs)
     # \ operation allocates internally in CHOLMOD solve but no ldiv! method currently available
     copyto!(solver.solution_buffer, solver.cholesky_factor.PtL \ solver.rhs_buffer)
@@ -280,7 +279,7 @@ function apply_inverse_adjoint!(solution, rhs, solver::SparseSolver)
     return apply_inverse!(solution, rhs, solver)
 end
 
-function apply_half_order_inverse_adjoint!(solution, rhs, solver::SparseSolver)
+function apply_inverse_sqrt_adjoint!(solution, rhs, solver::SparseSolver)
     copyto!(solver.rhs_buffer, rhs)
     # \ operation allocates internally in CHOLMOD solve but no ldiv! method currently available
     copyto!(solver.solution_buffer, solver.cholesky_factor.UP \ solver.rhs_buffer)

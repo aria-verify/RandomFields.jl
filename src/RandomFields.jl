@@ -97,7 +97,7 @@ function generate!(field, generator::RandomFieldGenerator, noise)
     generate_white_noise!(source_field, noise, generator.white_noise_scale)
 
     if generator.require_half_order
-        apply_half_order_inverse!(solution_field, source_field, generator.solver)
+        apply_inverse_sqrt!(solution_field, source_field, generator.solver)
         source_field, solution_field = solution_field, source_field
     end
 
