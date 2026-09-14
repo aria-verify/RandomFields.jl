@@ -79,13 +79,14 @@ end
         field = CenterField(grid)
         noise = randn(rng, size(field))
         solver_kwargs = if (solver_type <: RandomFields.AbstractIterativeSolver)
-            (; reltol=sqrt(eps(T)))
+            (; reltol=sqrt(eps(T)), n_sqrt_quadrature_points=128)
         else
             (;)
         end
         generator = RandomFieldGenerator(field, parameters; solver_type, solver_kwargs...)
         white_noise, reconstructed_white_noise = similar(field), similar(field)
         RandomFields.generate_white_noise!(white_noise, noise, generator.white_noise_scale)
+        # Applying inverse of linear operator and then linear operator should correspond to identity
         RandomFields.apply_inverse!(field, white_noise, generator.solver)
         RandomFields.apply!(reconstructed_white_noise, field, generator)
         tolerance = 1000 * (
@@ -97,5 +98,18 @@ end
         )
         @test maximum(abs, white_noise - reconstructed_white_noise) /
               maximum(abs, white_noise) < tolerance
+        intermediate = similar(field)
+        # Applying A * inv(sqrt(A))' * inv(sqrt(A)) for a linear operator A should
+        # correspond to identity
+        RandomFields.apply_inverse_sqrt!(intermediate, white_noise, generator.solver)
+        RandomFields.apply_inverse_sqrt_adjoint!(field, intermediate, generator.solver)
+        RandomFields.apply!(reconstructed_white_noise, field, generator)
+        @test maximum(abs, white_noise - reconstructed_white_noise) /
+              maximum(abs, white_noise) < tolerance
+        # For modified Helmholtz linear operator underlying generator, operator is
+        # symmetric so applying inverse and inverse adjoint should be equivalent
+        RandomFields.apply_inverse!(field, white_noise, generator.solver)
+        RandomFields.apply_inverse_adjoint!(intermediate, white_noise, generator.solver)
+        @test maximum(abs, field - intermediate) / maximum(abs, field) < tolerance
     end
 end
