@@ -73,7 +73,7 @@ function generate_white_noise!(field, noise, white_noise_scale)
     )
     fill_halo_regions!(field)
     isnothing(active_cells_map) && mask_immersed_field!(field)
-    return field
+    return nothing
 end
 
 """
