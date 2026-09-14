@@ -1,5 +1,53 @@
 abstract type AbstractSolver end
 
+"""
+    $(FUNCTIONNAME)(solution, rhs, solver)
+
+Apply the inverse of the linear operator solved for by `solver` to the right-hand side `rhs`
+and write the solution in-place to `solution`, where `rhs` and `solution` are both fields.
+
+Solves `A * x = b` where `A` is the linear system solved by `solver`, `b` is the vectorization
+of the `rhs` field and `x` is the vectorization of the `solution` field.
+"""
+function apply_inverse! end
+
+"""
+    $(FUNCTIONNAME)(solution, rhs, solver)
+
+Apply the inverse of the square-root (half-order) of linear operator solved for by `solver`
+to the right-hand side `rhs` and write the solution in-place to `solution`, where `rhs`
+and `solution` are both fields.
+
+Solves `sqrt(A) * x = b` where `A` is the linear system solved by `solver` and `sqrt(A)` is
+a matrix such that `sqrt(A) * sqrt(A)' === A`, `b` is the vectorization of the `rhs` field
+and `x` is the vectorization of the `solution` field.
+"""
+function apply_half_order_inverse! end
+
+"""
+    $(FUNCTIONNAME)(solution, rhs, solver)
+
+Apply the inverse of the adjoint of the linear operator solved for by `solver` to the right-hand
+side `rhs` and write the solution in-place to `solution`, where `rhs` and `solution` are both fields.
+
+Solves `A' * x = b` where `A'` is the adjoint of the linear system solved by `solver`,
+`b` is the vectorization of the `rhs` field and `x` is the vectorization of the `solution` field.
+"""
+function apply_inverse_adjoint! end
+
+"""
+    $(FUNCTIONNAME)(solution, rhs, solver)
+
+Apply the inverse of the adjoint of the square-root (half-order) of linear operator solved for by
+`solver` to the right-hand side `rhs` and write the solution in-place to `solution`, where `rhs`
+and `solution` are both fields.
+
+Solves `sqrt(A)' * x = b` where `A` is the linear system solved by `solver` and `sqrt(A)` is
+a matrix such that `sqrt(A) * sqrt(A)' === A`, `b` is the vectorization of the `rhs` field
+and `x` is the vectorization of the `solution` field.
+"""
+function apply_half_order_inverse_adjoint! end
+
 """Fill `field` with zeros in-place."""
 zero!(field::Field) = fill!(field, zero(eltype(field)))
 
@@ -65,6 +113,16 @@ function apply_half_order_inverse!(solution, rhs, solver::CGSolver)
     fill_halo_regions!(solution)
     mask_immersed_field!(solution)
     return nothing
+end
+
+# Linear system is assumed to be symmetric so inverse is self-adjoint
+function apply_inverse_adjoint!(solution, rhs, solver::CGSolver)
+    return apply_inverse!(solution, rhs, solver)
+end
+
+# Square root of linear system is assumed to be symmetric so inverse is self-adjoint
+function apply_half_order_inverse_adjoint!(solution, rhs, solver::CGSolver)
+    return apply_half_order_inverse_adjoint!(solution, rhs, solver)
 end
 
 function get_sparse_operator(
@@ -207,6 +265,21 @@ function apply_half_order_inverse!(solution, rhs, solver::SparseSolver)
     copyto!(solver.rhs_buffer, rhs)
     # \ operation allocates internally in CHOLMOD solve but no ldiv! method currently available
     copyto!(solver.solution_buffer, solver.cholesky_factor.PtL \ solver.rhs_buffer)
+    copyto!(solution, solver.solution_buffer)
+    fill_halo_regions!(solution)
+    mask_immersed_field!(solution)
+    return nothing
+end
+
+# Linear system is assumed to be symmetric so inverse is self-adjoint
+function apply_inverse_adjoint!(solution, rhs, solver::SparseSolver)
+    return apply_inverse!(solution, rhs, solver)
+end
+
+function apply_half_order_inverse_adjoint!(solution, rhs, solver::SparseSolver)
+    copyto!(solver.rhs_buffer, rhs)
+    # \ operation allocates internally in CHOLMOD solve but no ldiv! method currently available
+    copyto!(solver.solution_buffer, solver.cholesky_factor.PL \ solver.rhs_buffer)
     copyto!(solution, solver.solution_buffer)
     fill_halo_regions!(solution)
     mask_immersed_field!(solution)
