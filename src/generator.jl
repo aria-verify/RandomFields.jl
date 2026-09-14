@@ -11,17 +11,13 @@ struct RandomFieldGenerator{G,L,T,F,H,S}
     "Length-scale based weights for second derivative terms in modified Helmholtz operator"
     weights::Tuple{Vararg{T}}
     "Field buffer used to store intermediate quantities during computation"
-    field_buffer_a::F
-    "Field buffer used to store intermediate quantities during computation"
-    field_buffer_b::F
+    field_buffer::F
     "Field used to store precomputed per-cell scale factors for white noise generation"
     white_noise_scale::F
     "Linear operator corresponding to modified Helmholtz equation for the parameters of interest"
     modified_helmholtz_operator::H
     "Solver for linear system in modified Helmholtz operator "
     solver::S
-    "Number of quadrature points to use in integral approximation to square root of linear operator"
-    n_sqrt_quadrature_points::Int
 end
 
 function apply_modified_helmholtz_operator!(
@@ -43,17 +39,13 @@ $(SIGNATURES)
 
 Construct a random field generator for template `field` with covariance parameters `parameters`.
 
-The linear systems are solved using a conjugate gradient solver with relative tolerance `reltol`
-and maximum number of iterations `maxiter` and the half-order (square-root) linear operator
-inverse is approximated using quadrature of an integral representation with `n_sqrt_quadrature_points`
-quadrature points if relevant.
+The linear systems are solved with a solver of type `solver_type` with additional keyword
+arguments `solver_kwargs` passed to its constructor along with a function for applying
+the modified Helmholtz linear operator for a given shift coefficient and a template field
+for constructing buffers for use in intermediate computations in the solver.
 """
 function RandomFieldGenerator(
-    field,
-    parameters::AbstractMaternParameters;
-    reltol=1e-7,
-    maxiter=prod(size(field)),
-    n_sqrt_quadrature_points=32,
+    field, parameters::AbstractMaternParameters; solver_type=CGSolver, solver_kwargs...
 )
     grid = field.grid
     loc = location(field)
@@ -66,9 +58,7 @@ function RandomFieldGenerator(
     scale = variance_matching_constant(parameters, alpha, dimension)
     weights = derivative_weights(parameters, dimension)
 
-    field_buffer_a, field_buffer_b = similar(field), similar(field)
-
-    white_noise_scale = similar(field)
+    field_buffer, white_noise_scale = similar(field), similar(field)
 
     use_isotropic_operator =
         parameters isa IsotropicMatern && !(grid isa ImmersedBoundaryGrid)
@@ -88,9 +78,13 @@ function RandomFieldGenerator(
         lookup_operator(:V⁻¹, loc...),
     )
 
-    solver = ConjugateGradientSolver(
-        apply_modified_helmholtz_operator!; template_field=field, reltol, maxiter
-    )
+    function wrapped_apply!(solution, rhs, shift_coefficient)
+        return apply!(
+            solution, rhs, modified_helmholtz_operator, grid, shift_coefficient, weights
+        )
+    end
+
+    solver = solver_type(wrapped_apply!, field; solver_kwargs...)
 
     return RandomFieldGenerator(
         grid,
@@ -98,11 +92,9 @@ function RandomFieldGenerator(
         n_inverse_apply,
         require_half_order,
         weights,
-        field_buffer_a,
-        field_buffer_b,
+        field_buffer,
         white_noise_scale,
         modified_helmholtz_operator,
         solver,
-        n_sqrt_quadrature_points,
     )
 end

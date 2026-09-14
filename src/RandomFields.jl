@@ -53,10 +53,8 @@ include("parameters.jl")
 include("grid_helpers.jl")
 include("operators.jl")
 include("kernels.jl")
+include("solvers.jl")
 include("generator.jl")
-
-"""Fill `field` with zeros in-place."""
-zero!(field::Field) = fill!(field, zero(eltype(field)))
 
 function generate_white_noise!(field, noise, white_noise_scale)
     grid = field.grid
@@ -71,50 +69,6 @@ function generate_white_noise!(field, noise, white_noise_scale)
     )
     fill_halo_regions!(field)
     isnothing(active_cells_map) && mask_immersed_field!(field)
-    return field
-end
-
-function accumulate_weighted!(accumulator, addend, weight)
-    run_kernel!(
-        _accumulate_weighted_kernel!,
-        accumulator.grid,
-        accumulator,
-        addend,
-        weight;
-        active_cells_map=get_active_cells_map(accumulator.grid, Val(:xyz)),
-    )
-    return nothing
-end
-
-function apply_repeated_inverse!(
-    solution_field, source_field, generator::RandomFieldGenerator
-)
-    for _ in 1:generator.n_inverse_apply
-        zero!(solution_field)
-        solve!(solution_field, generator.solver, source_field, generator, 1.0)
-        fill_halo_regions!(solution_field)
-        mask_immersed_field!(solution_field)
-        source_field, solution_field = solution_field, source_field
-    end
-    # Due to name swap in final iteration, source_field corresponds to final solution
-    return source_field, solution_field
-end
-
-function apply_half_order_inverse!(
-    field, solution_field, rhs_field, generator::RandomFieldGenerator
-)
-    zero!(field)
-    # Approximate A^(-1/2) = (2/π) ∫₀^{π/2} (A + tan²θ)⁻¹ sec²θ dθ via midpoint quadrature
-    for m in 1:generator.n_sqrt_quadrature_points
-        θ = (m - 0.5) * (π / 2) / generator.n_sqrt_quadrature_points
-        shift_coefficient = 1 + tan(θ)^2
-        weight = (1 / generator.n_sqrt_quadrature_points) * sec(θ)^2
-        zero!(solution_field)
-        solve!(solution_field, generator.solver, rhs_field, generator, shift_coefficient)
-        accumulate_weighted!(field, solution_field, weight)
-    end
-    fill_halo_regions!(field)
-    mask_immersed_field!(solution_field)
     return field
 end
 
@@ -134,19 +88,23 @@ function generate!(field, generator::RandomFieldGenerator, noise)
     location(field) === generator.location ||
         throw(ArgumentError("generator was built for a different field location"))
 
-    source_field, solution_field = generator.field_buffer_a, generator.field_buffer_b
+    source_field, solution_field = generator.field_buffer, field
 
     generate_white_noise!(source_field, noise, generator.white_noise_scale)
 
-    solution_field, source_field = apply_repeated_inverse!(
-        solution_field, source_field, generator
-    )
-
     if generator.require_half_order
-        apply_half_order_inverse!(solution_field, field, source_field, generator)
-    else
-        copyto!(field, solution_field)
+        apply_half_order_inverse!(solution_field, source_field, generator.solver)
+        source_field, solution_field = solution_field, source_field
     end
+
+    for _ in 1:generator.n_inverse_apply
+        apply_inverse!(solution_field, source_field, generator.solver)
+        source_field, solution_field = solution_field, source_field
+    end
+
+    # Due to name swap in final iteration, source_field corresponds to final soßlution.
+    # If field does not contain final solution copy from buffer
+    field !== source_field && copyto!(field, generator.field_buffer)
 
     return nothing
 end
