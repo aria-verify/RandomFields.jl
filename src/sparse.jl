@@ -1,6 +1,23 @@
 using SparseArrays
 using Oceananigans: Periodic
 
+"""
+Determine the sparse matrix representation `(A, b)` of the linear (affine) operator implicitly
+defined  by `apply!`.
+
+The sparse matrix `A` and affine offset vector `b` are computed such that
+`result_vec .= A * vec(interior(operand)) + b` corresponds to  `apply!(result, operand, args...)`
+with `result_vec == vec(interior(result))`. `A` is restricted to acting on interior grid points
+and with ordering corresponding to the contiguous layout of `result` and `operand` fields `data`
+arrays. For a purely linear operator (homogeneous boundary conditions), `b` is all zeros.
+
+`apply!` must be linear and spatially local with support within `stencil_radius` (in L∞ /
+Chebyshev distance). If `verify=true` a second probe is performed with `stencil_radius + 1`
+and if the resulting computed `A` differs an error is raised.
+
+Requires `(2*stencil_radius+1)^3` calls to `apply!`, independent of grid size, or
+roughly double this if `verify=true`.
+"""
 function get_sparse_operator(
     result, operand, apply!, args...; stencil_radius::Int=2, verify::Bool=true, atol::Real=0
 )
