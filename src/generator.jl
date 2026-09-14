@@ -84,3 +84,19 @@ function RandomFieldGenerator(
         solver,
     )
 end
+
+"""
+Apply the modified Helmholtz operator underlying the Gaussian random field `generator`
+to an `operand` field and write in-place to `result` field.
+"""
+function apply!(result, operand, generator::RandomFieldGenerator)
+    shift_coefficient = 1.0
+    return apply!(
+        result,
+        operand,
+        generator.modified_helmholtz_operator,
+        generator.grid,
+        shift_coefficient,
+        generator.weights,
+    )
+end

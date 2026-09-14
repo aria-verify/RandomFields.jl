@@ -87,14 +87,7 @@ end
         white_noise, reconstructed_white_noise = similar(field), similar(field)
         RandomFields.generate_white_noise!(white_noise, noise, generator.white_noise_scale)
         RandomFields.apply_inverse!(field, white_noise, generator.solver)
-        RandomFields.apply!(
-            reconstructed_white_noise,
-            field,
-            generator.modified_helmholtz_operator,
-            grid,
-            1.0,
-            generator.weights,
-        )
+        RandomFields.apply!(reconstructed_white_noise, field, generator)
         tolerance = 1000 * (
             if solver_type <: RandomFields.AbstractIterativeSolver
                 solver_kwargs.reltol
