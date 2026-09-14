@@ -57,6 +57,7 @@ include("parameters.jl")
 include("grid_helpers.jl")
 include("operators.jl")
 include("kernels.jl")
+include("sparse.jl")
 include("solvers.jl")
 include("generator.jl")
 
