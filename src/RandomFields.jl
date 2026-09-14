@@ -106,7 +106,7 @@ function generate!(field, generator::RandomFieldGenerator, noise)
         source_field, solution_field = solution_field, source_field
     end
 
-    # Due to name swap in final iteration, source_field corresponds to final soßlution.
+    # Due to name swap in final iteration, source_field corresponds to final solution.
     # If field does not contain final solution copy from buffer
     field !== source_field && copyto!(field, generator.field_buffer)
 
