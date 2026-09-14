@@ -10,6 +10,7 @@ using Oceananigans:
     Center,
     Face,
     Flat,
+    Periodic,
     topology,
     architecture,
     RectilinearGrid,
@@ -23,9 +24,12 @@ using Oceananigans.Utils: launch!, get_active_cells_map
 using KernelAbstractions: @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
 using SpecialFunctions: gamma
+using LinearAlgebra
+using SparseArrays
 using DocStringExtensions
 
-export generate!, IsotropicMatern, AnisotropicMatern, RandomFieldGenerator
+export generate!
+export IsotropicMatern, AnisotropicMatern, RandomFieldGenerator, CGSolver, SparseSolver
 
 @template FUNCTIONS = """
                       $(DOCSTRING)
