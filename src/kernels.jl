@@ -32,9 +32,24 @@ end
     @inbounds accumulator[i, j, k] += weight * addend[i, j, k]
 end
 
-@kernel function _white_noise_scale_kernel!(out, grid, scale, volume_reciprocal)
+@kernel function _compute_sqrt_cell_volumes!(out, grid, volume)
     i, j, k = @index(Global, NTuple)
-    @inbounds out[i, j, k] = scale * sqrt(volume_reciprocal(i, j, k, grid))
+    @inbounds out[i, j, k] = sqrt(volume(i, j, k, grid))
+end
+
+@kernel function _mul_by_sqrt_cell_volumes_kernel!(result, operand, sqrt_cell_volumes)
+    i, j, k = @index(Global, NTuple)
+    @inbounds result[i, j, k] = operand[i, j, k] * sqrt_cell_volumes[i, j, k]
+end
+
+@kernel function _div_by_sqrt_cell_volumes_kernel!(result, operand, sqrt_cell_volumes)
+    i, j, k = @index(Global, NTuple)
+    @inbounds result[i, j, k] = operand[i, j, k] / sqrt_cell_volumes[i, j, k]
+end
+
+@kernel function _scale_noise_kernel!(result, noise, scale)
+    i, j, k = @index(Global, NTuple)
+    @inbounds result[i, j, k] = noise[i, j, k] * scale
 end
 
 function run_kernel!(kernel, grid, args...; kwargs...)

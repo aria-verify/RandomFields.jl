@@ -135,14 +135,18 @@ struct SparseSolver{C,V} <: AbstractDirectSolver
     solution_buffer::V
 end
 
-function SparseSolver(apply!, field_template; stencil_radius::Int=2)
+function SparseSolver(apply!, field_template; stencil_radius::Int=2, do_checks::Bool=true)
     result = similar(field_template)
     operand = similar(field_template)
     shift_coefficient = 1.0
-    A, b = get_sparse_operator(result, operand, apply!, shift_coefficient; stencil_radius)
-    # Modfied Helmholtz operator should be homogeneous and so the affine offset vector
-    # b should be all zero
-    @assert iszero(b)
+    A, b = get_sparse_operator(
+        result, operand, apply!, shift_coefficient; stencil_radius, verify=do_checks
+    )
+    # Operator should be symmetric with respect to Euclidean inner product
+    # Use permutedims(A) rather than A' as norm(A - A') computes dense representation
+    do_checks && @assert isapprox(A, permutedims(A), rtol=eps(eltype(A)))
+    # Operator should be homogeneous and so the affine offset vector b should be all zero
+    do_checks && @assert iszero(b)
     if (field_template.grid isa ImmersedBoundaryGrid)
         # For immersed grids sparse operator A will be singular due to apply! having no effect
         # on cell indices corresponding to inactive immersed cells, with corresponding rows /
@@ -156,7 +160,7 @@ function SparseSolver(apply!, field_template; stencil_radius::Int=2)
         # is masked to zero inactive indices we will still therefore get a valid solution.
         inactive_indices = regularize_operator!(A; ε=1.0)
         immersed_indices = get_immersed_indices(field_template)
-        @assert Set(inactive_indices) == Set(immersed_indices)
+        do_checks && @assert Set(inactive_indices) == Set(immersed_indices)
     end
     cholesky_factor = cholesky(Symmetric(A))
     rhs_buffer = similar(vec(interior(field_template)))
@@ -179,7 +183,8 @@ function apply_inverse_sqrt!(solution, rhs, solver::SparseSolver)
     copyto!(solver.solution_buffer, solver.cholesky_factor.PtL \ solver.rhs_buffer)
     copyto!(solution, solver.solution_buffer)
     fill_halo_regions!(solution)
-    mask_immersed_field!(solution)
+    # We deliberately do no mask immersed values here as this breaks exchangebility /
+    # permutation invariance of output
     return nothing
 end
 

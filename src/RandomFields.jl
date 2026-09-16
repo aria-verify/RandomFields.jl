@@ -44,19 +44,20 @@ include("sparse.jl")
 include("solvers.jl")
 include("generator.jl")
 
-function generate_white_noise!(field, noise, white_noise_scale)
+function scale_noise!(result, noise, scale)
+    run_kernel!(_scale_noise_kernel!, result.grid, result, noise, scale)
+    return nothing
+end
+
+function generate_white_noise!(
+    field, noise, generator::RandomFieldGenerator; mask_immersed=false
+)
     grid = field.grid
-    active_cells_map = get_active_cells_map(grid, Val(:xyz))
-    run_kernel!(
-        _discretize_white_noise_kernel!,
-        grid,
-        field,
-        noise,
-        white_noise_scale;
-        active_cells_map,
-    )
+    active_cells_map = mask_immersed ? get_active_cells_map(grid, Val(:xyz)) : nothing
+    scale_noise!(field, noise, generator.scale)
+    div_by_sqrt_cell_volumes!(field, generator.sqrt_cell_volumes)
     fill_halo_regions!(field)
-    isnothing(active_cells_map) && mask_immersed_field!(field)
+    mask_immersed && isnothing(active_cells_map) && mask_immersed_field!(field)
     return nothing
 end
 
@@ -78,10 +79,10 @@ function generate!(field, generator::RandomFieldGenerator, noise)
 
     source_field, solution_field = generator.field_buffer, field
 
-    generate_white_noise!(source_field, noise, generator.white_noise_scale)
+    scale_noise!(source_field, noise, generator.scale)
 
     if generator.require_half_order
-        apply_inverse_sqrt!(solution_field, source_field, generator.solver)
+        apply_inverse_sqrt_adjoint!(solution_field, source_field, generator.solver)
         source_field, solution_field = solution_field, source_field
     end
 
@@ -93,6 +94,8 @@ function generate!(field, generator::RandomFieldGenerator, noise)
     # Due to name swap in final iteration, source_field corresponds to final solution.
     # If field does not contain final solution copy from buffer
     field !== source_field && copyto!(field, generator.field_buffer)
+
+    div_by_sqrt_cell_volumes!(field, generator.sqrt_cell_volumes)
 
     return nothing
 end

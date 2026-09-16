@@ -164,3 +164,62 @@ function apply!(
     isnothing(active_cells_map) && mask_immersed_field!(result)
     return nothing
 end
+
+function div_by_sqrt_cell_volumes!(result, operand, sqrt_volumes)
+    grid = result.grid
+    active_cells_map = get_active_cells_map(grid, Val(:xyz))
+    run_kernel!(
+        _div_by_sqrt_cell_volumes_kernel!,
+        grid,
+        result,
+        operand,
+        sqrt_volumes;
+        active_cells_map,
+    )
+    fill_halo_regions!(result)
+    return nothing
+end
+
+function div_by_sqrt_cell_volumes!(field, sqrt_volumes)
+    return div_by_sqrt_cell_volumes!(field, field, sqrt_volumes)
+end
+
+function mul_by_sqrt_cell_volumes!(result, operand, sqrt_volumes)
+    grid = result.grid
+    active_cells_map = get_active_cells_map(grid, Val(:xyz))
+    run_kernel!(
+        _mul_by_sqrt_cell_volumes_kernel!,
+        grid,
+        result,
+        operand,
+        sqrt_volumes;
+        active_cells_map,
+    )
+    fill_halo_regions!(result)
+    return nothing
+end
+
+function mul_by_sqrt_cell_volumes!(field, sqrt_volumes)
+    return mul_by_sqrt_cell_volumes!(field, field, sqrt_volumes)
+end
+
+function symmetric_apply!(
+    result,
+    operand,
+    operator::AbstractModifiedHelmholtzOperator,
+    grid,
+    shift_coefficient,
+    weights,
+    sqrt_cell_volumes,
+)
+    # Modified Helmholtz operator A is symmetric with respect to the cell volume weighted
+    # inner product that is AᵀV = VA where V is a diagonal matrix of the cell volumes
+    # To form an operator which is symmetric with respect to Euclidean inner product we
+    # compute sqrt(V) * A * sqrt(V)⁻¹
+    div_by_sqrt_cell_volumes!(operand, sqrt_cell_volumes)
+    apply!(result, operand, operator, grid, shift_coefficient, weights)
+    mul_by_sqrt_cell_volumes!(result, sqrt_cell_volumes)
+    # Undo scaling of operand
+    mul_by_sqrt_cell_volumes!(operand, sqrt_cell_volumes)
+    return nothing
+end

@@ -1,5 +1,5 @@
 "Precomputed quantities and buffer storage for generating Gaussian random fields"
-struct RandomFieldGenerator{G,L,T,F,H,S}
+struct RandomFieldGenerator{G,L,T,F,A,H,S}
     "Oceananigans grid fields will be generated on"
     grid::G
     "Staggered grid location tuple fields will be generated on"
@@ -8,12 +8,14 @@ struct RandomFieldGenerator{G,L,T,F,H,S}
     n_inverse_apply::Int
     "Whether the inverse half-order modified Helmholtz linear operator needs to be applied to generate field"
     require_half_order::Bool
+    "Variance matching scale coefficient"
+    scale::T
     "Length-scale based weights for second derivative terms in modified Helmholtz operator"
     weights::Tuple{Vararg{T}}
     "Field buffer used to store intermediate quantities during computation"
     field_buffer::F
-    "Field used to store precomputed per-cell scale factors for white noise generation"
-    white_noise_scale::F
+    "Array buffer used to store precomputed square root of cell volume scale factors"
+    sqrt_cell_volumes::A
     "Linear operator corresponding to modified Helmholtz equation for the parameters of interest"
     modified_helmholtz_operator::H
     "Solver for linear system in modified Helmholtz operator "
@@ -44,7 +46,8 @@ function RandomFieldGenerator(
     scale = variance_matching_constant(parameters, alpha, dimension)
     weights = derivative_weights(parameters, dimension)
 
-    field_buffer, white_noise_scale = similar(field), similar(field)
+    field_buffer = similar(field)
+    sqrt_cell_volumes = similar(interior(field))
 
     use_isotropic_operator =
         parameters isa IsotropicMatern && !(grid isa ImmersedBoundaryGrid)
@@ -56,17 +59,22 @@ function RandomFieldGenerator(
     end
 
     run_kernel!(
-        _white_noise_scale_kernel!,
+        _compute_sqrt_cell_volumes!,
         grid,
-        white_noise_scale,
+        sqrt_cell_volumes,
         grid,
-        scale,
-        lookup_operator(:V⁻¹, loc...),
+        lookup_operator(:V, loc...),
     )
 
     function wrapped_apply!(solution, rhs, shift_coefficient)
-        return apply!(
-            solution, rhs, modified_helmholtz_operator, grid, shift_coefficient, weights
+        return symmetric_apply!(
+            solution,
+            rhs,
+            modified_helmholtz_operator,
+            grid,
+            shift_coefficient,
+            weights,
+            sqrt_cell_volumes,
         )
     end
 
@@ -77,26 +85,28 @@ function RandomFieldGenerator(
         loc,
         n_inverse_apply,
         require_half_order,
+        scale,
         weights,
         field_buffer,
-        white_noise_scale,
+        sqrt_cell_volumes,
         modified_helmholtz_operator,
         solver,
     )
 end
 
 """
-Apply the modified Helmholtz operator underlying the Gaussian random field `generator`
-to an `operand` field and write in-place to `result` field.
+Apply the symmetrized modified Helmholtz operator underlying the Gaussian random
+field `generator` to an `operand` field and write in-place to `result` field.
 """
 function apply!(result, operand, generator::RandomFieldGenerator)
     shift_coefficient = 1.0
-    return apply!(
+    return symmetric_apply!(
         result,
         operand,
         generator.modified_helmholtz_operator,
         generator.grid,
         shift_coefficient,
         generator.weights,
+        generator.sqrt_cell_volumes,
     )
 end

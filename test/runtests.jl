@@ -113,7 +113,9 @@ end
         end
         generator = RandomFieldGenerator(field, parameters; solver_type, solver_kwargs...)
         white_noise, reconstructed_white_noise = similar(field), similar(field)
-        RandomFields.generate_white_noise!(white_noise, noise, generator.white_noise_scale)
+        RandomFields.generate_white_noise!(
+            white_noise, noise, generator, mask_immersed=true
+        )
         # Applying inverse of linear operator and then linear operator should correspond to identity
         RandomFields.apply_inverse!(field, white_noise, generator.solver)
         RandomFields.apply!(reconstructed_white_noise, field, generator)
