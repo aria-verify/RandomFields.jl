@@ -19,7 +19,7 @@ Requires `(2*stencil_radius+1)^3` calls to `apply!`, independent of grid size, o
 `2 * (2*stencil_radius+2)^3 + 12 * (stencil_radius+1)` calls if `verify=true`.
 """
 function get_sparse_operator(
-    result, operand, apply!, args...; stencil_radius::Int=2, verify::Bool=true, atol::Real=0
+    result, operand, apply!, args...; stencil_radius::Int=1, verify::Bool=true, atol::Real=0
 )
     Nx, Ny, Nz = size(operand)
     @assert size(result) == (Nx, Ny, Nz) "result and operand must share size/location"

@@ -135,7 +135,7 @@ struct SparseSolver{C,V} <: AbstractDirectSolver
     solution_buffer::V
 end
 
-function SparseSolver(apply!, field_template; stencil_radius::Int=2, do_checks::Bool=true)
+function SparseSolver(apply!, field_template; stencil_radius::Int=1, do_checks::Bool=true)
     result = similar(field_template)
     operand = similar(field_template)
     shift_coefficient = 1.0
