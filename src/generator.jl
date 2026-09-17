@@ -66,15 +66,15 @@ function RandomFieldGenerator(
         lookup_operator(:V, loc...),
     )
 
-    function wrapped_apply!(solution, rhs, shift_coefficient)
+    function wrapped_apply!(solution, rhs, shift=zero(eltype(solution)))
         return symmetric_apply!(
             solution,
             rhs,
             modified_helmholtz_operator,
             grid,
-            shift_coefficient,
             weights,
             sqrt_cell_volumes,
+            shift,
         )
     end
 
@@ -99,13 +99,11 @@ Apply the symmetrized modified Helmholtz operator underlying the Gaussian random
 field `generator` to an `operand` field and write in-place to `result` field.
 """
 function apply!(result, operand, generator::RandomFieldGenerator)
-    shift_coefficient = 1.0
     return symmetric_apply!(
         result,
         operand,
         generator.modified_helmholtz_operator,
         generator.grid,
-        shift_coefficient,
         generator.weights,
         generator.sqrt_cell_volumes,
     )

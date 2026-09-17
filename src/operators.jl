@@ -145,8 +145,8 @@ function apply!(
     operand,
     operator::AbstractModifiedHelmholtzOperator,
     grid,
-    shift_coefficient,
     weights,
+    shift=zero(eltype(grid)),
 )
     active_cells_map = get_active_cells_map(grid, Val(:xyz))
     run_kernel!(
@@ -155,7 +155,7 @@ function apply!(
         result,
         operand,
         grid,
-        shift_coefficient,
+        shift,
         weights,
         differential_operators(operator);
         active_cells_map,
@@ -208,16 +208,16 @@ function symmetric_apply!(
     operand,
     operator::AbstractModifiedHelmholtzOperator,
     grid,
-    shift_coefficient,
     weights,
     sqrt_cell_volumes,
+    shift=zero(eltype(grid)),
 )
     # Modified Helmholtz operator A is symmetric with respect to the cell volume weighted
     # inner product that is AᵀV = VA where V is a diagonal matrix of the cell volumes
     # To form an operator which is symmetric with respect to Euclidean inner product we
     # compute sqrt(V) * A * sqrt(V)⁻¹
     div_by_sqrt_cell_volumes!(operand, sqrt_cell_volumes)
-    apply!(result, operand, operator, grid, shift_coefficient, weights)
+    apply!(result, operand, operator, grid, weights, shift)
     mul_by_sqrt_cell_volumes!(result, sqrt_cell_volumes)
     # Undo scaling of operand
     mul_by_sqrt_cell_volumes!(operand, sqrt_cell_volumes)

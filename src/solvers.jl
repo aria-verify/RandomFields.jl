@@ -96,8 +96,7 @@ end
 
 function apply_inverse!(solution, rhs, solver::CGSolver)
     zero!(solution)
-    shift_coefficient = 1.0
-    solve!(solution, solver.solver, rhs, shift_coefficient)
+    solve!(solution, solver.solver, rhs)
     fill_halo_regions!(solution)
     mask_immersed_field!(solution)
     return nothing
@@ -105,13 +104,14 @@ end
 
 function apply_inverse_sqrt!(solution, rhs, solver::CGSolver)
     zero!(solution)
+    T = eltype(solution)
     # Approximate A^(-1/2) = (2/π) ∫₀^{π/2} (A + tan²θ)⁻¹ sec²θ dθ via midpoint quadrature
     for m in 1:solver.n_sqrt_quadrature_points
         θ = (m - 0.5) * (π / 2) / solver.n_sqrt_quadrature_points
-        shift_coefficient = 1.0 + tan(θ)^2
-        weight = (1 / solver.n_sqrt_quadrature_points) * sec(θ)^2
+        shift = T(tan(θ)^2)
+        weight = T((1 / solver.n_sqrt_quadrature_points) * sec(θ)^2)
         zero!(solver.solution_buffer)
-        solve!(solver.solution_buffer, solver.solver, rhs, shift_coefficient)
+        solve!(solver.solution_buffer, solver.solver, rhs, shift)
         accumulate_weighted!(solution, solver.solution_buffer, weight)
     end
     fill_halo_regions!(solution)
@@ -139,10 +139,7 @@ end
 function SparseSolver(apply!, field_template; stencil_radius::Int=1, do_checks::Bool=true)
     result = similar(field_template)
     operand = similar(field_template)
-    shift_coefficient = 1.0
-    A, b = get_sparse_operator(
-        result, operand, apply!, shift_coefficient; stencil_radius, verify=do_checks
-    )
+    A, b = get_sparse_operator(result, operand, apply!; stencil_radius, verify=do_checks)
     # Operator should be symmetric with respect to Euclidean inner product
     # Use permutedims(A) rather than A' as norm(A - A') computes dense representation
     do_checks && @assert isapprox(A, permutedims(A), rtol=eps(eltype(A)))
