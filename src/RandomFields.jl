@@ -49,6 +49,13 @@ function scale_noise!(result, noise, scale)
     return nothing
 end
 
+"""
+Generate white noise and write to `field` using standard normal variate
+in `noise` with `size(noise) == size(field)` and scaling by scale factor
+and reciprocal of square root of cell volumes cached in `generator`. If
+`field` is defined on a `ImmersedBoundaryGrid` and `mask_immersed` is
+`true` inactive immersed cells in the output will be masked to zero.
+"""
 function generate_white_noise!(
     field, noise, generator::RandomFieldGenerator; mask_immersed=false
 )
