@@ -33,7 +33,7 @@ the modified Helmholtz linear operator for a given shift coefficient and a templ
 for constructing buffers for use in intermediate computations in the solver.
 """
 function RandomFieldGenerator(
-    field, parameters::AbstractMaternParameters; solver_type=CGSolver, solver_kwargs...
+    field, parameters::AbstractMaternParameters; solver_type=SparseSolver, solver_kwargs...
 )
     grid = field.grid
     loc = location(field)
