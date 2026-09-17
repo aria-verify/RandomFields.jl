@@ -132,13 +132,15 @@ end
 """
 Regularize a symmetric stencil operator `A` for which some rows / columns are all zero
 due to, for example, presence of inactive immersed cells in the corresponding fields,
-by adding an arbitrary value `ε` to the corresponding diagonal entries.
+by adding an arbitrary value `ε` to the corresponding diagonal entries, returning
+the reguarlized matrix `A_reg` and the vector of inactive indices `inactive`.
 """
-function regularize_operator!(A::SparseMatrixCSC; ε::Real=1.0)
+function regularize_operator(A::SparseMatrixCSC{T}; ε::T=1.0) where {T}
     sum_abs_rows = vec(sum(abs, A; dims=2))
     inactive = findall(iszero, sum_abs_rows)
-    for i in inactive
-        A[i, i] = ε
-    end
-    return inactive
+    # Getting index arrays, adding new diagonal entries and creating new sparse array is
+    # much quicker than looping over i in inactive and updating A[i, i] = ε in place
+    I, J, V = findnz(A)
+    A_reg = sparse([I; inactive], [J; inactive], [V; fill(ε, size(inactive))], size(A)...)
+    return A_reg, inactive
 end
