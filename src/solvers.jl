@@ -156,7 +156,7 @@ function SparseSolver(apply!, field_template; stencil_radius::Int=1, do_checks::
         # inactive block and leaves the solution for the active block unchanged, therefore
         # the solution restricted to the active indices is unchanged. Providing the solution
         # is masked to zero inactive indices we will still therefore get a valid solution.
-        A, inactive_indices = regularize_operator(A; ε=1.0)
+        A, inactive_indices = regularize_operator(A; ε=one(eltype(field_template)))
         immersed_indices = get_immersed_indices(field_template)
         do_checks && @assert Set(inactive_indices) == Set(immersed_indices)
     end
