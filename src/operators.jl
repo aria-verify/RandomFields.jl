@@ -1,3 +1,5 @@
+using KernelAbstractions.Extras.LoopInfo: @unroll
+
 abstract type AbstractDirectionalOperator{M,I} end
 
 dimension_of(::AbstractDirectionalOperator{M}) where {M} = M
@@ -64,7 +66,7 @@ end
     $(FUNCTIONNAME)(i, j, k, grid, op, far, near, flux_far, flux_near)
 
 Compute second derivative term for a field on grid `grid` with direction differential operator
-`op` at indices `(i, j, k)` given the computed flux terms `flux_near` and `flux_far` at near 
+`op` at indices `(i, j, k)` given the computed flux terms `flux_near` and `flux_far` at near
 and far offset index tuples `far` and `near`.
 """
 function second_derivative_term end
@@ -123,7 +125,7 @@ struct IsotropicModifiedHelmholtzOperator{L} <: AbstractModifiedHelmholtzOperato
 end
 
 function kernel(::IsotropicModifiedHelmholtzOperator)
-    _isotropic_modified_helmholtz_operator_kernel!
+    return _isotropic_modified_helmholtz_operator_kernel!
 end
 differential_operators(op::IsotropicModifiedHelmholtzOperator) = op.laplacian_operator
 
@@ -132,10 +134,10 @@ struct AnisotropicModifiedHelmholtzOperator{D} <: AbstractModifiedHelmholtzOpera
 end
 
 function kernel(::AnisotropicModifiedHelmholtzOperator)
-    _anisotropic_modified_helmholtz_operator_kernel!
+    return _anisotropic_modified_helmholtz_operator_kernel!
 end
 function differential_operators(op::AnisotropicModifiedHelmholtzOperator)
-    op.differential_operators
+    return op.differential_operators
 end
 
 function apply!(
@@ -143,8 +145,8 @@ function apply!(
     operand,
     operator::AbstractModifiedHelmholtzOperator,
     grid,
-    shift_coefficient,
     weights,
+    shift=zero(eltype(grid)),
 )
     active_cells_map = get_active_cells_map(grid, Val(:xyz))
     run_kernel!(
@@ -153,12 +155,71 @@ function apply!(
         result,
         operand,
         grid,
-        shift_coefficient,
+        shift,
         weights,
         differential_operators(operator);
         active_cells_map,
     )
     fill_halo_regions!(result)
     isnothing(active_cells_map) && mask_immersed_field!(result)
+    return nothing
+end
+
+function div_by_sqrt_cell_volumes!(result, operand, sqrt_volumes)
+    grid = result.grid
+    active_cells_map = get_active_cells_map(grid, Val(:xyz))
+    run_kernel!(
+        _div_by_sqrt_cell_volumes_kernel!,
+        grid,
+        result,
+        operand,
+        sqrt_volumes;
+        active_cells_map,
+    )
+    fill_halo_regions!(result)
+    return nothing
+end
+
+function div_by_sqrt_cell_volumes!(field, sqrt_volumes)
+    return div_by_sqrt_cell_volumes!(field, field, sqrt_volumes)
+end
+
+function mul_by_sqrt_cell_volumes!(result, operand, sqrt_volumes)
+    grid = result.grid
+    active_cells_map = get_active_cells_map(grid, Val(:xyz))
+    run_kernel!(
+        _mul_by_sqrt_cell_volumes_kernel!,
+        grid,
+        result,
+        operand,
+        sqrt_volumes;
+        active_cells_map,
+    )
+    fill_halo_regions!(result)
+    return nothing
+end
+
+function mul_by_sqrt_cell_volumes!(field, sqrt_volumes)
+    return mul_by_sqrt_cell_volumes!(field, field, sqrt_volumes)
+end
+
+function symmetric_apply!(
+    result,
+    operand,
+    operator::AbstractModifiedHelmholtzOperator,
+    grid,
+    weights,
+    sqrt_cell_volumes,
+    shift=zero(eltype(grid)),
+)
+    # Modified Helmholtz operator A is symmetric with respect to the cell volume weighted
+    # inner product that is AᵀV = VA where V is a diagonal matrix of the cell volumes
+    # To form an operator which is symmetric with respect to Euclidean inner product we
+    # compute sqrt(V) * A * sqrt(V)⁻¹
+    div_by_sqrt_cell_volumes!(operand, sqrt_cell_volumes)
+    apply!(result, operand, operator, grid, weights, shift)
+    mul_by_sqrt_cell_volumes!(result, sqrt_cell_volumes)
+    # Undo scaling of operand
+    mul_by_sqrt_cell_volumes!(operand, sqrt_cell_volumes)
     return nothing
 end

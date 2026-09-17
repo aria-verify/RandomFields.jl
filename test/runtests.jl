@@ -24,20 +24,48 @@ function make_test_grid(
     return grid_type(CPU(), float_type; extents..., size, topology, halo)
 end
 
+function make_test_immersed_grid(underlying_grid_type, float_type)
+    underlying_grid = make_test_grid(underlying_grid_type, 3, float_type)
+    bottom_height(x, y) = -(x * y) / (underlying_grid.Lx * underlying_grid.Ly)
+    return ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+end
+
+function skip_grid_config(dimension, grid_type, float_type, non_flat_topology)
+    if dimension == 1 && grid_type === LatitudeLongitudeGrid
+        # Not all operators defined for one-dimensional latitude-longitude grids
+        return true
+    elseif grid_type === LatitudeLongitudeGrid && non_flat_topology === Periodic
+        # Latitude-longitude grids cannot have periodic latitude
+        return true
+    else
+        return false
+    end
+end
+
 function make_test_grids(
     dimensions=1:3,
     grid_types=(RectilinearGrid, LatitudeLongitudeGrid),
     float_types=(Float32, Float64),
+    non_flat_topologies=(Bounded, Periodic),
+    include_immersed_grids=true,
 )
-    (
-        make_test_grid(g, d, f) for d in dimensions, g in grid_types, f in float_types if
-        # Skip one-dimensional lat-lon grid as some operators appear to not be defined
-        g !== LatitudeLongitudeGrid || d >= 2
+    underlying_grids = (
+        make_test_grid(g, d, f, t) for
+        d in dimensions, g in grid_types, f in float_types, t in non_flat_topologies if
+        !skip_grid_config(d, g, f, t)
     )
+    if !include_immersed_grids
+        return underlying_grids
+    else
+        return Base.Iterators.flatten((
+            underlying_grids,
+            (make_test_immersed_grid(g, f) for g in grid_types, f in float_types),
+        ))
+    end
 end
 
 function make_test_parameters(dimension, T)
-    (
+    return (
         IsotropicMatern(;
             length_scale=one(T), output_scale=one(T), smoothness=T((dimension / 2) + 1)
         ),
@@ -53,18 +81,65 @@ end
     @testset "Code quality (Aqua.jl)" begin
         Aqua.test_all(RandomFields)
     end
-    @testset "generate! on grid $(summary(grid)) with parameters $(parameters)" for
-            grid in make_test_grids(),
-            parameters in make_test_parameters(RandomFields.dimension_count(grid), eltype(grid))
+    @testset "$(
+        "generate! on grid $(summary(grid)) with parameters $(parameters)"
+    )" for grid in make_test_grids(),
+        parameters in make_test_parameters(RandomFields.dimension_count(grid), eltype(grid))
+
         rng = Xoshiro(RANDOM_SEED)
         field = CenterField(grid)
         noise = randn(rng, size(field))
-        dimension = RandomFields.dimension_count(grid)
         generator = RandomFieldGenerator(field, parameters)
         generate!(field, generator, noise)
         @test any(field .!= 0)
         field_2 = CenterField(grid)
         generate!(field_2, generator, noise)
         @test all(field .== field_2)
+    end
+    @testset "$(
+        "Solver $(solver_type) on grid $(summary(grid)) with parameters $(parameters) inverts apply!"
+    )" for solver_type in (CGSolver, SparseSolver),
+        grid in make_test_grids(),
+        parameters in make_test_parameters(RandomFields.dimension_count(grid), eltype(grid))
+
+        T = eltype(grid)
+        rng = Xoshiro(RANDOM_SEED)
+        field = CenterField(grid)
+        noise = randn(rng, size(field))
+        solver_kwargs = if (solver_type <: RandomFields.AbstractIterativeSolver)
+            (; reltol=sqrt(eps(T)), n_sqrt_quadrature_points=128)
+        else
+            (;)
+        end
+        generator = RandomFieldGenerator(field, parameters; solver_type, solver_kwargs...)
+        white_noise, reconstructed_white_noise = similar(field), similar(field)
+        RandomFields.generate_white_noise!(
+            white_noise, noise, generator, mask_immersed=true
+        )
+        # Applying inverse of linear operator and then linear operator should correspond to identity
+        RandomFields.solve!(field, white_noise, generator.solver)
+        RandomFields.apply!(reconstructed_white_noise, field, generator)
+        tolerance = 1000 * (
+            if solver_type <: RandomFields.AbstractIterativeSolver
+                solver_kwargs.reltol
+            else
+                eps(T)
+            end
+        )
+        @test maximum(abs, white_noise - reconstructed_white_noise) /
+              maximum(abs, white_noise) < tolerance
+        intermediate = similar(field)
+        # Applying A * inv(sqrt(A))' * inv(sqrt(A)) for a linear operator A should
+        # correspond to identity
+        RandomFields.solve_sqrt!(intermediate, white_noise, generator.solver)
+        RandomFields.solve_sqrt_adjoint!(field, intermediate, generator.solver)
+        RandomFields.apply!(reconstructed_white_noise, field, generator)
+        @test maximum(abs, white_noise - reconstructed_white_noise) /
+              maximum(abs, white_noise) < tolerance
+        # For modified Helmholtz linear operator underlying generator, operator is
+        # symmetric so applying inverse and inverse adjoint should be equivalent
+        RandomFields.solve!(field, white_noise, generator.solver)
+        RandomFields.solve_adjoint!(intermediate, white_noise, generator.solver)
+        @test maximum(abs, field - intermediate) / maximum(abs, field) < tolerance
     end
 end
