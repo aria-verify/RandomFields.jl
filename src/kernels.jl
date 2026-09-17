@@ -20,13 +20,6 @@ end
         weighted_second_derivative_sum(i, j, k, grid, operand, weights, operators)
 end
 
-@kernel function _discretize_white_noise_kernel!(
-    result, standard_normal_noise, white_noise_scale
-)
-    i, j, k = @index(Global, NTuple)
-    @inbounds result[i, j, k] = standard_normal_noise[i, j, k] * white_noise_scale[i, j, k]
-end
-
 @kernel function _accumulate_weighted_kernel!(accumulator, addend, weight)
     i, j, k = @index(Global, NTuple)
     @inbounds accumulator[i, j, k] += weight * addend[i, j, k]
