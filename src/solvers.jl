@@ -129,7 +129,8 @@ function apply_inverse_sqrt_adjoint!(solution, rhs, solver::CGSolver)
     return apply_inverse_sqrt!(solution, rhs, solver)
 end
 
-struct SparseSolver{C,V} <: AbstractDirectSolver
+struct SparseSolver{S,C,V} <: AbstractDirectSolver
+    sparse_operator::S
     cholesky_factor::C
     rhs_buffer::V
     solution_buffer::V
@@ -165,7 +166,7 @@ function SparseSolver(apply!, field_template; stencil_radius::Int=1, do_checks::
     cholesky_factor = cholesky(Symmetric(A))
     rhs_buffer = similar(vec(interior(field_template)))
     solution_buffer = similar(rhs_buffer)
-    return SparseSolver(cholesky_factor, rhs_buffer, solution_buffer)
+    return SparseSolver(A, cholesky_factor, rhs_buffer, solution_buffer)
 end
 
 function apply_inverse!(solution, rhs, solver::SparseSolver)
