@@ -82,12 +82,12 @@ function generate!(field, generator::RandomFieldGenerator, noise)
     scale_noise!(source_field, noise, generator.scale)
 
     if generator.require_half_order
-        apply_inverse_sqrt_adjoint!(solution_field, source_field, generator.solver)
+        solve_sqrt_adjoint!(solution_field, source_field, generator.solver)
         source_field, solution_field = solution_field, source_field
     end
 
-    for _ in 1:generator.n_inverse_apply
-        apply_inverse!(solution_field, source_field, generator.solver)
+    for _ in 1:generator.n_solve
+        solve!(solution_field, source_field, generator.solver)
         source_field, solution_field = solution_field, source_field
     end
 

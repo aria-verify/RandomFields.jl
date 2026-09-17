@@ -1,4 +1,4 @@
-using Oceananigans.Solvers: ConjugateGradientSolver, solve!
+using Oceananigans.Solvers: ConjugateGradientSolver, solve! as _solve!
 using LinearAlgebra
 
 abstract type AbstractSolver end
@@ -14,7 +14,7 @@ and write the solution in-place to `solution`, where `rhs` and `solution` are bo
 Solves `A * x = b` where `A` is the linear system solved by `solver`, `b` is the vectorization
 of the `rhs` field and `x` is the vectorization of the `solution` field.
 """
-function apply_inverse! end
+function solve! end
 
 """
     $(FUNCTIONNAME)(solution, rhs, solver)
@@ -26,7 +26,7 @@ Solves `sqrt(A) * x = b` where `A` is the linear system solved by `solver` and `
 a matrix such that `sqrt(A) * sqrt(A)' === A`, `b` is the vectorization of the `rhs` field
 and `x` is the vectorization of the `solution` field.
 """
-function apply_inverse_sqrt! end
+function solve_sqrt! end
 
 """
     $(FUNCTIONNAME)(solution, rhs, solver)
@@ -37,7 +37,7 @@ side `rhs` and write the solution in-place to `solution`, where `rhs` and `solut
 Solves `A' * x = b` where `A'` is the adjoint of the linear system solved by `solver`,
 `b` is the vectorization of the `rhs` field and `x` is the vectorization of the `solution` field.
 """
-function apply_inverse_adjoint! end
+function solve_adjoint! end
 
 """
     $(FUNCTIONNAME)(solution, rhs, solver)
@@ -50,7 +50,7 @@ Solves `sqrt(A)' * x = b` where `A` is the linear system solved by `solver` and 
 a matrix such that `sqrt(A) * sqrt(A)' === A`, `b` is the vectorization of the `rhs` field
 and `x` is the vectorization of the `solution` field.
 """
-function apply_inverse_sqrt_adjoint! end
+function solve_sqrt_adjoint! end
 
 """Fill `field` with zeros in-place."""
 zero!(field::Field) = fill!(field, zero(eltype(field)))
@@ -98,15 +98,15 @@ function CGSolver(
     return CGSolver(solver, similar(template_field), n_sqrt_quadrature_points)
 end
 
-function apply_inverse!(solution, rhs, solver::CGSolver)
+function solve!(solution, rhs, solver::CGSolver)
     zero!(solution)
-    solve!(solution, solver.solver, rhs)
+    _solve!(solution, solver.solver, rhs)
     fill_halo_regions!(solution)
     mask_immersed_field!(solution)
     return nothing
 end
 
-function apply_inverse_sqrt!(solution, rhs, solver::CGSolver)
+function solve_sqrt!(solution, rhs, solver::CGSolver)
     zero!(solution)
     T = eltype(solution)
     # Approximate A^(-1/2) = (2/π) ∫₀^{π/2} (A + tan²θ)⁻¹ sec²θ dθ via midpoint quadrature
@@ -115,7 +115,7 @@ function apply_inverse_sqrt!(solution, rhs, solver::CGSolver)
         shift = T(tan(θ)^2)
         weight = T((1 / solver.n_sqrt_quadrature_points) * sec(θ)^2)
         zero!(solver.solution_buffer)
-        solve!(solver.solution_buffer, solver.solver, rhs, shift)
+        _solve!(solver.solution_buffer, solver.solver, rhs, shift)
         accumulate_weighted!(solution, solver.solution_buffer, weight)
     end
     fill_halo_regions!(solution)
@@ -124,13 +124,13 @@ function apply_inverse_sqrt!(solution, rhs, solver::CGSolver)
 end
 
 # Linear system is assumed to be symmetric so inverse is self-adjoint
-function apply_inverse_adjoint!(solution, rhs, solver::CGSolver)
-    return apply_inverse!(solution, rhs, solver)
+function solve_adjoint!(solution, rhs, solver::CGSolver)
+    return solve!(solution, rhs, solver)
 end
 
 # Square root of linear system is assumed to be symmetric so inverse is self-adjoint
-function apply_inverse_sqrt_adjoint!(solution, rhs, solver::CGSolver)
-    return apply_inverse_sqrt!(solution, rhs, solver)
+function solve_sqrt_adjoint!(solution, rhs, solver::CGSolver)
+    return solve_sqrt!(solution, rhs, solver)
 end
 
 """Symmetric linear system solver directly solving using a sparse Cholesky factorization"""
@@ -189,7 +189,7 @@ function SparseSolver(apply!, field_template; stencil_radius::Int=1, do_checks::
     return SparseSolver(A, cholesky_factor, rhs_buffer, solution_buffer)
 end
 
-function apply_inverse!(solution, rhs, solver::SparseSolver)
+function solve!(solution, rhs, solver::SparseSolver)
     copyto!(solver.rhs_buffer, rhs)
     ldiv!(solver.solution_buffer, solver.cholesky_factor, solver.rhs_buffer)
     copyto!(solution, solver.solution_buffer)
@@ -198,7 +198,7 @@ function apply_inverse!(solution, rhs, solver::SparseSolver)
     return nothing
 end
 
-function apply_inverse_sqrt!(solution, rhs, solver::SparseSolver)
+function solve_sqrt!(solution, rhs, solver::SparseSolver)
     copyto!(solver.rhs_buffer, rhs)
     # \ operation allocates internally in CHOLMOD solve but no ldiv! method currently available
     copyto!(solver.solution_buffer, solver.cholesky_factor.PtL \ solver.rhs_buffer)
@@ -210,11 +210,11 @@ function apply_inverse_sqrt!(solution, rhs, solver::SparseSolver)
 end
 
 # Linear system is assumed to be symmetric so inverse is self-adjoint
-function apply_inverse_adjoint!(solution, rhs, solver::SparseSolver)
-    return apply_inverse!(solution, rhs, solver)
+function solve_adjoint!(solution, rhs, solver::SparseSolver)
+    return solve!(solution, rhs, solver)
 end
 
-function apply_inverse_sqrt_adjoint!(solution, rhs, solver::SparseSolver)
+function solve_sqrt_adjoint!(solution, rhs, solver::SparseSolver)
     copyto!(solver.rhs_buffer, rhs)
     # \ operation allocates internally in CHOLMOD solve but no ldiv! method currently available
     copyto!(solver.solution_buffer, solver.cholesky_factor.UP \ solver.rhs_buffer)

@@ -4,9 +4,9 @@ struct RandomFieldGenerator{G,L,T,F,A,H,S}
     grid::G
     "Staggered grid location tuple fields will be generated on"
     location::L
-    "Number of times inverse of modified Helmholtz linear operator is applied to generate field"
-    n_inverse_apply::Int
-    "Whether the inverse half-order modified Helmholtz linear operator needs to be applied to generate field"
+    "Number of times modified Helmholtz linear operator system is solved for to generate field"
+    n_solve::Int
+    "Whether the half-order modified Helmholtz linear operator system needs to be solved for to generate field"
     require_half_order::Bool
     "Variance matching scale coefficient"
     scale::T
@@ -42,7 +42,7 @@ function RandomFieldGenerator(
     check_parameter_dimension(parameters, dimension)
 
     alpha = matern_spde_alpha(parameters.smoothness, dimension)
-    n_inverse_apply, require_half_order = alpha ÷ 2, isodd(alpha)
+    n_solve, require_half_order = alpha ÷ 2, isodd(alpha)
     scale = variance_matching_constant(parameters, alpha, dimension)
     weights = derivative_weights(parameters, dimension)
 
@@ -83,7 +83,7 @@ function RandomFieldGenerator(
     return RandomFieldGenerator(
         grid,
         loc,
-        n_inverse_apply,
+        n_solve,
         require_half_order,
         scale,
         weights,

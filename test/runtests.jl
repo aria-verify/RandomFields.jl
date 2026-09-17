@@ -117,7 +117,7 @@ end
             white_noise, noise, generator, mask_immersed=true
         )
         # Applying inverse of linear operator and then linear operator should correspond to identity
-        RandomFields.apply_inverse!(field, white_noise, generator.solver)
+        RandomFields.solve!(field, white_noise, generator.solver)
         RandomFields.apply!(reconstructed_white_noise, field, generator)
         tolerance = 1000 * (
             if solver_type <: RandomFields.AbstractIterativeSolver
@@ -131,15 +131,15 @@ end
         intermediate = similar(field)
         # Applying A * inv(sqrt(A))' * inv(sqrt(A)) for a linear operator A should
         # correspond to identity
-        RandomFields.apply_inverse_sqrt!(intermediate, white_noise, generator.solver)
-        RandomFields.apply_inverse_sqrt_adjoint!(field, intermediate, generator.solver)
+        RandomFields.solve_sqrt!(intermediate, white_noise, generator.solver)
+        RandomFields.solve_sqrt_adjoint!(field, intermediate, generator.solver)
         RandomFields.apply!(reconstructed_white_noise, field, generator)
         @test maximum(abs, white_noise - reconstructed_white_noise) /
               maximum(abs, white_noise) < tolerance
         # For modified Helmholtz linear operator underlying generator, operator is
         # symmetric so applying inverse and inverse adjoint should be equivalent
-        RandomFields.apply_inverse!(field, white_noise, generator.solver)
-        RandomFields.apply_inverse_adjoint!(intermediate, white_noise, generator.solver)
+        RandomFields.solve!(field, white_noise, generator.solver)
+        RandomFields.solve_adjoint!(intermediate, white_noise, generator.solver)
         @test maximum(abs, field - intermediate) / maximum(abs, field) < tolerance
     end
 end
