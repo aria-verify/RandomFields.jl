@@ -16,7 +16,7 @@ Chebyshev distance). If `verify=true` a second probe is performed with `stencil_
 and if the resulting computed `A` differs an error is raised.
 
 Requires `(2*stencil_radius+1)^3` calls to `apply!`, independent of grid size, or
-roughly double this if `verify=true`.
+`2 * (2*stencil_radius+2)^3 + 12 * (stencil_radius+1)` calls if `verify=true`.
 """
 function get_sparse_operator(
     result, operand, apply!, args...; stencil_radius::Int=2, verify::Bool=true, atol::Real=0
