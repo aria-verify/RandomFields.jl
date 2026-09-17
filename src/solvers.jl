@@ -78,6 +78,8 @@ struct CGSolver{S,F} <: AbstractIterativeSolver
 end
 
 """
+$(SIGNATURES)
+
 Construct a conjugate gradient iterative solver for symmetric linear operator implemented
 by `apply!` on fields matching `field_template`.
 
@@ -146,6 +148,8 @@ struct SparseSolver{S,C,V} <: AbstractDirectSolver
 end
 
 """
+$(SIGNATURES)
+
 Construct a direct sparse solver for symmetric linear operator implemented by `apply!`
 on fields matching `field_template`.
 

@@ -12,12 +12,10 @@ makedocs(;
         edit_link="main",
         assets=String[],
     ),
-    pages=[
+    pages=Any[
         "Home" => "index.md",
+        "API reference" => ["Public" => "lib/public.md", "Internals" => "lib/internals.md"],
     ],
 )
 
-deploydocs(;
-    repo="github.com/aria-verify/RandomFields.jl",
-    devbranch="main",
-)
+deploydocs(; repo="github.com/aria-verify/RandomFields.jl", devbranch="main")
