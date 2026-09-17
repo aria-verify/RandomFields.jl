@@ -78,9 +78,13 @@ struct CGSolver{S,F} <: AbstractIterativeSolver
 end
 
 """
-Construct a conjugate gradient solver with relative tolerance `reltol` and maximum number of
-iterations `maxiter`. The half-order (square-root) linear operator inverse is approximated
-using quadrature of an integral representation with `n_sqrt_quadrature_points`
+Construct a conjugate gradient iterative solver for symmetric linear operator implemented
+by `apply!` on fields matching `field_template`.
+
+The action of the linear operator on a field `operand` corresponds to the value
+of `result` after calling `apply!(result, operand)`. The solver uses a relative tolerance `reltol`
+and maximum number of iterations `maxiter`. The half-order (square-root) linear operator inverse
+is approximated using quadrature of an integral representation with `n_sqrt_quadrature_points`
 quadrature points if relevant.
 """
 function CGSolver(
@@ -129,13 +133,32 @@ function apply_inverse_sqrt_adjoint!(solution, rhs, solver::CGSolver)
     return apply_inverse_sqrt!(solution, rhs, solver)
 end
 
+"""Symmetric linear system solver directly solving using a sparse Cholesky factorization"""
 struct SparseSolver{S,C,V} <: AbstractDirectSolver
+    "Symmetric sparse operator solved for"
     sparse_operator::S
+    "Precomputed Cholesky factorization of sparse operator"
     cholesky_factor::C
+    "Array buffer for writing right-hand side of system to when solving"
     rhs_buffer::V
+    "Array buffer for writing solution of system to when solving"
     solution_buffer::V
 end
 
+"""
+Construct a direct sparse solver for symmetric linear operator implemented by `apply!`
+on fields matching `field_template`.
+
+The action of the linear operator on a field `operand` corresponds to the value
+of `result` after calling `apply!(result, operand)`. This operator is probed
+assuming the operator is a stencil operator with radius `stencil_radius` and a
+sparse matrix representation built which is then Cholesky factorized. If `do_checks`
+is `true` then additional checks are performed to verify that `stencil_radius` is
+large enough, that the operator is symmetric and homogeneous. If `field_template`
+is defined on a `ImmersedBoundaryGrid` the sparse matrix operator is regularized
+by adding `ε=1` to the diagonal entries corresponding to immersed inactive cells
+with arbitrary values in these cells then masked out in the solution.
+"""
 function SparseSolver(apply!, field_template; stencil_radius::Int=1, do_checks::Bool=true)
     result = similar(field_template)
     operand = similar(field_template)
