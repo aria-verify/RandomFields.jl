@@ -9,4 +9,5 @@ RandomFields = "53c68c22-76a5-4c85-9d7c-68c72d336b8c"
 RandomFields = {path = ".."}
 
 [compat]
+CairoMakie = "0.15.14"
 Documenter = "1.17.0"
