@@ -10,3 +10,4 @@ RandomFields = {path = ".."}
 
 [compat]
 Documenter = "1.17.0"
+Random = "1.11"
