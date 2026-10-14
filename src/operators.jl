@@ -1,13 +1,15 @@
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
-abstract type AbstractDirectionalOperator{M,I} end
+abstract type AbstractDirectionalOperator{M,L,I} end
 
 dimension_of(::AbstractDirectionalOperator{M}) where {M} = M
+location_of(::AbstractDirectionalOperator{M,L}) where {M,L} = L
 
 """
-Directional differential operator on a dimension `M` for grids with separable metrics.
+Directional differential operator on a dimension `M` for grids with separable metrics, acting
+on an operand with location `L` (`Center` or `Face`) in dimension `M`.
 """
-struct SeparableDirectionalOperator{M,I,D} <: AbstractDirectionalOperator{M,I}
+struct SeparableDirectionalOperator{M,L,I,D} <: AbstractDirectionalOperator{M,L,I}
     "Derivative operation at dimension M flipped operand location"
     inner::I
     "Grid spacing operation at operand location"
@@ -15,9 +17,10 @@ struct SeparableDirectionalOperator{M,I,D} <: AbstractDirectionalOperator{M,I}
 end
 
 """
-Directional differential operator on a dimension `M` for grids with non-separable metrics.
+Directional differential operator on a dimension `M` for grids with non-separable metrics,
+acting on an operand with location `L` (`Center` or `Face`) in dimension `M`.
 """
-struct NonSeparableDirectionalOperator{M,I,A,V} <: AbstractDirectionalOperator{M,I}
+struct NonSeparableDirectionalOperator{M,L,I,A,V} <: AbstractDirectionalOperator{M,L,I}
     "Derivative operation at dimension M flipped operand location"
     inner::I
     "Face area operation at dimension M flipped operand location"
@@ -39,11 +42,11 @@ function directional_operators(grid, loc)
         inner = lookup_operator(Symbol(:∂, DIMENSION_SYMBOLS[m]), flipped...)
         new_op = if separable_metrics(grid)
             delta = lookup_operator(Symbol(:Δ, DIMENSION_SYMBOLS[m]), loc...)
-            SeparableDirectionalOperator{m,typeof(inner),typeof(delta)}(inner, delta)
+            SeparableDirectionalOperator{m,loc[m],typeof(inner),typeof(delta)}(inner, delta)
         else
             area = lookup_operator(Symbol(:A, DIMENSION_SYMBOLS[m]), flipped...)
             volume = lookup_operator(:V, loc...)
-            NonSeparableDirectionalOperator{m,typeof(inner),typeof(area),typeof(volume)}(
+            NonSeparableDirectionalOperator{m,loc[m],typeof(inner),typeof(area),typeof(volume)}(
                 inner, area, volume
             )
         end
@@ -100,16 +103,16 @@ derivative operators `operators`.
     i,
     j,
     k,
-    grid::G,
-    operand::Field{L1,L2,L3},
+    grid,
+    operand,
     weights::NTuple{D},
     operators::NTuple{D,AbstractDirectionalOperator},
-) where {G,L1,L2,L3,D}
+) where {D}
     second_derivative_sum = zero(eltype(operand))
     @unroll for d in 1:D
         w, op = weights[d], operators[d]
         m = dimension_of(op)
-        near, far = bounding_pair(Val(m), (L1, L2, L3)[m], i, j, k)
+        near, far = bounding_pair(Val(m), location_of(op), i, j, k)
         flux_near = masked_evaluate(op.inner, Val(m), near..., grid, operand)
         flux_far = masked_evaluate(op.inner, Val(m), far..., grid, operand)
         second_derivative_sum +=
